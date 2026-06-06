@@ -13,8 +13,14 @@ npm run dev
 
 推送到 GitHub 仓库的 `main` 分支后，GitHub Actions 会自动构建并部署到 GitHub Pages。
 
-如果仓库名是 `jin-tian-chi-sha`，发布地址通常是：
+当前仓库地址：
 
 ```text
-https://<你的 GitHub 用户名>.github.io/jin-tian-chi-sha/
+https://github.com/Jackiehill-ff/What-food-today
+```
+
+发布地址通常是：
+
+```text
+https://jackiehill-ff.github.io/What-food-today/
 ```
