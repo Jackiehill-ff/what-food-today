@@ -22,5 +22,5 @@ https://github.com/Jackiehill-ff/What-food-today
 发布地址通常是：
 
 ```text
-https://jackiehill-ff.github.io/What-food-today/
+https://jackiehill-ff.github.io/what-food-today/
 ```
