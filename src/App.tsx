@@ -20,22 +20,35 @@ type Tab = "plan" | "recipes" | "shopping";
 
 type Category = "蔬菜" | "豆类" | "谷类" | "调料" | "其他";
 
-type RecipeItem = {
+type RecipeType = "full" | "simple";
+
+type Ingredient = {
   id: string;
   name: string;
+  category: Category;
   amount: string;
   unit: string;
-  category: Category;
 };
 
 type Recipe = {
   id: string;
-  name: string;
+  title: string;
+  type: RecipeType;
   category: string;
-  ingredients: RecipeItem[];
-  seasonings: RecipeItem[];
-  steps: string;
-  notes: string;
+  ingredients: Ingredient[];
+  method: string;
+  rawText?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type ImportRecord = {
+  id: string;
+  sourceType: "flomo" | "image" | "manual";
+  sourceId?: string;
+  rawText?: string;
+  importedRecipeIds: string[];
+  createdAt: string;
 };
 
 type MealSlot = {
@@ -51,6 +64,7 @@ type MealPlanEntry = {
 
 type AppState = {
   recipes: Recipe[];
+  importRecords: ImportRecord[];
   mealSlots: MealSlot[];
   mealPlan: MealPlanEntry[];
   checkedItems: Record<string, boolean>;
@@ -71,6 +85,7 @@ const CATEGORIES: Category[] = ["蔬菜", "豆类", "谷类", "调料", "其他"
 
 const DEFAULT_STATE: AppState = {
   recipes: [],
+  importRecords: [],
   mealSlots: [
     { id: "breakfast", name: "早餐" },
     { id: "lunch", name: "午餐" },
@@ -82,7 +97,13 @@ const DEFAULT_STATE: AppState = {
 
 const createId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-const createBlankItem = (category: Category = "蔬菜"): RecipeItem => ({
+const createTimestamp = () => new Date().toISOString();
+
+const isCategory = (value: string): value is Category => CATEGORIES.includes(value as Category);
+
+const normalizeCategory = (value: unknown): Category => (typeof value === "string" && isCategory(value) ? value : "其他");
+
+const createBlankItem = (category: Category = "蔬菜"): Ingredient => ({
   id: createId(),
   name: "",
   amount: "",
@@ -92,12 +113,58 @@ const createBlankItem = (category: Category = "蔬菜"): RecipeItem => ({
 
 const createBlankRecipe = (): Recipe => ({
   id: createId(),
-  name: "",
+  title: "",
+  type: "full",
   category: "",
   ingredients: [createBlankItem()],
-  seasonings: [createBlankItem("调料")],
-  steps: "",
-  notes: "",
+  method: "",
+  rawText: "",
+  createdAt: createTimestamp(),
+  updatedAt: createTimestamp(),
+});
+
+const normalizeIngredient = (item: Partial<Ingredient>): Ingredient => ({
+  id: item.id || createId(),
+  name: item.name?.trim() ?? "",
+  category: normalizeCategory(item.category),
+  amount: item.amount?.trim() ?? "",
+  unit: item.unit?.trim() ?? "",
+});
+
+const isRecipeType = (value: unknown): value is RecipeType => value === "full" || value === "simple";
+
+const migrateRecipe = (recipe: Partial<Recipe> & {
+  name?: string;
+  seasonings?: Partial<Ingredient>[];
+  steps?: string;
+  notes?: string;
+}): Recipe => {
+  const now = createTimestamp();
+  const ingredients = [
+    ...(Array.isArray(recipe.ingredients) ? recipe.ingredients : []),
+    ...(Array.isArray(recipe.seasonings) ? recipe.seasonings : []),
+  ].map(normalizeIngredient);
+
+  return {
+    id: recipe.id || createId(),
+    title: (recipe.title ?? recipe.name ?? "").trim(),
+    type: isRecipeType(recipe.type) ? recipe.type : "full",
+    category: recipe.category?.trim() ?? "",
+    ingredients,
+    method: (recipe.method ?? recipe.steps ?? "").trim(),
+    rawText: (recipe.rawText ?? recipe.notes ?? "").trim(),
+    createdAt: recipe.createdAt || now,
+    updatedAt: recipe.updatedAt || now,
+  };
+};
+
+const migrateImportRecord = (record: Partial<ImportRecord>): ImportRecord => ({
+  id: record.id || createId(),
+  sourceType: record.sourceType === "flomo" || record.sourceType === "image" || record.sourceType === "manual" ? record.sourceType : "manual",
+  sourceId: record.sourceId,
+  rawText: record.rawText,
+  importedRecipeIds: Array.isArray(record.importedRecipeIds) ? record.importedRecipeIds : [],
+  createdAt: record.createdAt || createTimestamp(),
 });
 
 const loadState = (): AppState => {
@@ -107,8 +174,10 @@ const loadState = (): AppState => {
       return DEFAULT_STATE;
     }
     const parsed = JSON.parse(stored) as Partial<AppState>;
+    const recipes = Array.isArray(parsed.recipes) ? parsed.recipes.map(migrateRecipe).filter((recipe) => recipe.title) : [];
     return {
-      recipes: parsed.recipes ?? [],
+      recipes,
+      importRecords: Array.isArray(parsed.importRecords) ? parsed.importRecords.map(migrateImportRecord) : [],
       mealSlots: parsed.mealSlots?.length ? parsed.mealSlots : DEFAULT_STATE.mealSlots,
       mealPlan: parsed.mealPlan ?? [],
       checkedItems: parsed.checkedItems ?? {},
@@ -165,8 +234,11 @@ const mergeAmounts = (amounts: string[]) => {
 const itemKey = (date: string, item: Pick<ShoppingItem, "name" | "unit" | "category">) =>
   `${date}|${item.category}|${item.name}|${item.unit}`;
 
-const getItemsForRecipe = (recipe: Recipe) =>
-  [...recipe.ingredients, ...recipe.seasonings].filter((item) => item.name.trim());
+const getItemsForRecipe = (recipe: Recipe) => recipe.ingredients.filter((item) => item.name.trim());
+
+const getRecipeSeasonings = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category === "调料");
+
+const getRecipeFoodIngredients = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category !== "调料");
 
 function App() {
   const [appState, setAppState] = useState<AppState>(() => loadState());
@@ -194,7 +266,7 @@ function App() {
       return appState.recipes;
     }
     return appState.recipes.filter((recipe) =>
-      [recipe.name, recipe.category, recipe.notes].join(" ").toLowerCase().includes(keyword),
+      [recipe.title, recipe.category, recipe.method, recipe.rawText].join(" ").toLowerCase().includes(keyword),
     );
   }, [appState.recipes, recipeSearch]);
 
@@ -215,8 +287,8 @@ function App() {
             const existing = grouped.get(key);
             if (existing) {
               existing.amounts.push(sourceItem.amount);
-              if (!existing.item.recipeNames.includes(recipe.name)) {
-                existing.item.recipeNames.push(recipe.name);
+              if (!existing.item.recipeNames.includes(recipe.title)) {
+                existing.item.recipeNames.push(recipe.title);
               }
               return;
             }
@@ -227,7 +299,7 @@ function App() {
                 amount: "",
                 unit: sourceItem.unit.trim(),
                 category: sourceItem.category,
-                recipeNames: [recipe.name],
+                recipeNames: [recipe.title],
               },
               amounts: [sourceItem.amount],
             });
@@ -250,17 +322,18 @@ function App() {
   };
 
   const saveRecipe = () => {
+    const now = createTimestamp();
     const normalized: Recipe = {
       ...recipeDraft,
-      name: recipeDraft.name.trim(),
+      title: recipeDraft.title.trim(),
       category: recipeDraft.category.trim(),
       ingredients: recipeDraft.ingredients.filter((item) => item.name.trim()),
-      seasonings: recipeDraft.seasonings.filter((item) => item.name.trim()),
-      steps: recipeDraft.steps.trim(),
-      notes: recipeDraft.notes.trim(),
+      method: recipeDraft.method.trim(),
+      rawText: recipeDraft.rawText?.trim(),
+      updatedAt: now,
     };
 
-    if (!normalized.name) {
+    if (!normalized.title) {
       return;
     }
 
@@ -281,7 +354,6 @@ function App() {
     setRecipeDraft({
       ...recipe,
       ingredients: recipe.ingredients.length ? recipe.ingredients : [createBlankItem()],
-      seasonings: recipe.seasonings.length ? recipe.seasonings : [createBlankItem("调料")],
     });
     setEditingRecipeId(recipe.id);
     setActiveTab("recipes");
@@ -302,12 +374,12 @@ function App() {
   const updateRecipeItem = (
     section: "ingredients" | "seasonings",
     itemId: string,
-    field: keyof RecipeItem,
+    field: keyof Ingredient,
     value: string,
   ) => {
     setRecipeDraft((current) => ({
       ...current,
-      [section]: current[section].map((item) =>
+      ingredients: current.ingredients.map((item) =>
         item.id === itemId ? { ...item, [field]: field === "category" ? (value as Category) : value } : item,
       ),
     }));
@@ -316,14 +388,17 @@ function App() {
   const addRecipeItem = (section: "ingredients" | "seasonings") => {
     setRecipeDraft((current) => ({
       ...current,
-      [section]: [...current[section], createBlankItem(section === "seasonings" ? "调料" : "蔬菜")],
+      ingredients: [...current.ingredients, createBlankItem(section === "seasonings" ? "调料" : "蔬菜")],
     }));
   };
 
   const removeRecipeItem = (section: "ingredients" | "seasonings", itemId: string) => {
     setRecipeDraft((current) => ({
       ...current,
-      [section]: current[section].length === 1 ? current[section] : current[section].filter((item) => item.id !== itemId),
+      ingredients:
+        current.ingredients.filter((item) => (section === "seasonings" ? item.category === "调料" : item.category !== "调料")).length === 1
+          ? current.ingredients
+          : current.ingredients.filter((item) => item.id !== itemId),
     }));
   };
 
@@ -542,10 +617,11 @@ function App() {
                     filteredRecipes.map((recipe) => (
                       <article className="recipe-card" key={recipe.id}>
                         <div>
-                          <h3>{recipe.name}</h3>
+                          <h3>{recipe.title}</h3>
                           <p>{recipe.category || "未分类"}</p>
                           <span>
-                            {recipe.ingredients.length} 食材 · {recipe.seasonings.length} 调味料
+                            {getRecipeFoodIngredients(recipe).length} 食材 · {getRecipeSeasonings(recipe).length} 调味料 ·{" "}
+                            {recipe.type === "simple" ? "简易" : "完整"}
                           </span>
                         </div>
                         <div className="card-actions">
@@ -645,7 +721,7 @@ function PlanRow({
             <option value="">不安排</option>
             {recipes.map((recipe) => (
               <option key={recipe.id} value={recipe.id}>
-                {recipe.name}
+                {recipe.title}
               </option>
             ))}
           </select>
@@ -670,7 +746,7 @@ function RecipeForm({
   setDraft: Dispatch<SetStateAction<Recipe>>;
   saveRecipe: () => void;
   cancelEdit: () => void;
-  updateRecipeItem: (section: "ingredients" | "seasonings", itemId: string, field: keyof RecipeItem, value: string) => void;
+  updateRecipeItem: (section: "ingredients" | "seasonings", itemId: string, field: keyof Ingredient, value: string) => void;
   addRecipeItem: (section: "ingredients" | "seasonings") => void;
   removeRecipeItem: (section: "ingredients" | "seasonings", itemId: string) => void;
 }) {
@@ -679,17 +755,24 @@ function RecipeForm({
       <div className="form-grid two">
         <label>
           食谱名称
-          <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="番茄炒蛋" />
+          <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="番茄炒蛋" />
         </label>
         <label>
           分类
           <input value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))} placeholder="家常菜" />
         </label>
       </div>
+      <label>
+        食谱类型
+        <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value as RecipeType }))}>
+          <option value="full">完整食谱</option>
+          <option value="simple">简易食谱</option>
+        </select>
+      </label>
 
       <ItemEditor
         title="食材"
-        items={draft.ingredients}
+        items={getRecipeFoodIngredients(draft)}
         section="ingredients"
         updateRecipeItem={updateRecipeItem}
         addRecipeItem={addRecipeItem}
@@ -698,7 +781,7 @@ function RecipeForm({
 
       <ItemEditor
         title="调味料"
-        items={draft.seasonings}
+        items={getRecipeSeasonings(draft)}
         section="seasonings"
         updateRecipeItem={updateRecipeItem}
         addRecipeItem={addRecipeItem}
@@ -708,25 +791,25 @@ function RecipeForm({
       <label>
         做法步骤
         <textarea
-          value={draft.steps}
-          onChange={(event) => setDraft((current) => ({ ...current, steps: event.target.value }))}
+          value={draft.method}
+          onChange={(event) => setDraft((current) => ({ ...current, method: event.target.value }))}
           placeholder="每行写一步，实际做饭时更容易扫读。"
           rows={5}
         />
       </label>
 
       <label>
-        备注
+        原始文本 / 备注
         <textarea
-          value={draft.notes}
-          onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
+          value={draft.rawText ?? ""}
+          onChange={(event) => setDraft((current) => ({ ...current, rawText: event.target.value }))}
           placeholder="口味、替换食材、提前准备事项"
           rows={3}
         />
       </label>
 
       <div className="form-actions">
-        <button className="primary-button" onClick={saveRecipe} disabled={!draft.name.trim()}>
+        <button className="primary-button" onClick={saveRecipe} disabled={!draft.title.trim()}>
           <Save size={16} />
           {editingRecipeId ? "保存修改" : "保存食谱"}
         </button>
@@ -749,9 +832,9 @@ function ItemEditor({
   removeRecipeItem,
 }: {
   title: string;
-  items: RecipeItem[];
+  items: Ingredient[];
   section: "ingredients" | "seasonings";
-  updateRecipeItem: (section: "ingredients" | "seasonings", itemId: string, field: keyof RecipeItem, value: string) => void;
+  updateRecipeItem: (section: "ingredients" | "seasonings", itemId: string, field: keyof Ingredient, value: string) => void;
   addRecipeItem: (section: "ingredients" | "seasonings") => void;
   removeRecipeItem: (section: "ingredients" | "seasonings", itemId: string) => void;
 }) {
