@@ -449,6 +449,12 @@ label {
   gap: 8px;
 }
 
+.quick-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
 .search-box {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
@@ -485,8 +491,24 @@ label {
   margin: 0;
 }
 
+.recipe-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .recipe-card h3 {
   font-size: 18px;
+}
+
+.recipe-kind {
+  padding: 2px 7px;
+  border: 1px solid #d9e2d8;
+  border-radius: 8px;
+  color: #557064;
+  background: #ffffff;
+  font-size: 12px;
 }
 
 .recipe-card p,
@@ -671,7 +693,8 @@ label {
   }
 
   .form-grid.two,
-  .item-row {
+  .item-row,
+  .quick-add {
     grid-template-columns: 1fr;
   }
 

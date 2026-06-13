@@ -140,6 +140,7 @@ const normalizeIngredient = (item: Partial<Ingredient>): Ingredient => ({
 const isRecipeType = (value: unknown): value is RecipeType => value === "full" || value === "simple";
 
 const migrateRecipe = (recipe: Partial<Recipe> & {
+  kind?: RecipeType;
   name?: string;
   seasonings?: Partial<Ingredient>[];
   steps?: string;
@@ -154,7 +155,7 @@ const migrateRecipe = (recipe: Partial<Recipe> & {
   return {
     id: recipe.id || createId(),
     title: (recipe.title ?? recipe.name ?? "").trim(),
-    type: isRecipeType(recipe.type) ? recipe.type : "full",
+    type: isRecipeType(recipe.type) ? recipe.type : isRecipeType(recipe.kind) ? recipe.kind : "full",
     category: recipe.category?.trim() ?? "",
     ingredients,
     method: (recipe.method ?? recipe.steps ?? "").trim(),
@@ -184,6 +185,13 @@ const createImportDraft = (recipe: Partial<Recipe> & { rawText: string; parseFai
   createdAt: createTimestamp(),
   updatedAt: createTimestamp(),
   parseFailed: Boolean(recipe.parseFailed),
+});
+
+const createSimpleRecipe = (title = ""): Recipe => ({
+  ...createBlankRecipe(),
+  type: "simple",
+  title,
+  ingredients: [],
 });
 
 const loadState = (): AppState => {
@@ -354,6 +362,7 @@ function App() {
   const [recipeDraft, setRecipeDraft] = useState<Recipe>(() => createBlankRecipe());
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [quickRecipeName, setQuickRecipeName] = useState("");
   const [slotName, setSlotName] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
   const [importText, setImportText] = useState("");
@@ -375,9 +384,12 @@ function App() {
     if (!keyword) {
       return appState.recipes;
     }
-    return appState.recipes.filter((recipe) =>
-      [recipe.title, recipe.category, recipe.method, recipe.rawText].join(" ").toLowerCase().includes(keyword),
-    );
+    return appState.recipes.filter((recipe) => {
+      const itemText = getItemsForRecipe(recipe)
+        .map((item) => `${item.name} ${item.category}`)
+        .join(" ");
+      return [recipe.title, recipe.category, recipe.method, recipe.rawText, itemText].join(" ").toLowerCase().includes(keyword);
+    });
   }, [appState.recipes, recipeSearch]);
 
   const shoppingByDate = useMemo(() => {
@@ -429,6 +441,18 @@ function App() {
 
   const updateState = (updater: (state: AppState) => AppState) => {
     setAppState((current) => updater(current));
+  };
+
+  const addQuickRecipe = () => {
+    const name = quickRecipeName.trim();
+    if (!name) {
+      return;
+    }
+    updateState((state) => ({
+      ...state,
+      recipes: [createSimpleRecipe(name), ...state.recipes],
+    }));
+    setQuickRecipeName("");
   };
 
   const saveRecipe = () => {
@@ -797,9 +821,25 @@ function App() {
               />
 
               <div className="recipe-list-panel">
+                <div className="quick-add">
+                  <input
+                    value={quickRecipeName}
+                    onChange={(event) => setQuickRecipeName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        addQuickRecipe();
+                      }
+                    }}
+                    placeholder="快速添加简易食谱，如米饭"
+                  />
+                  <button className="ghost-button" onClick={addQuickRecipe} disabled={!quickRecipeName.trim()}>
+                    <Plus size={16} />
+                    添加简易
+                  </button>
+                </div>
                 <div className="search-box">
                   <Search size={17} />
-                  <input value={recipeSearch} onChange={(event) => setRecipeSearch(event.target.value)} placeholder="搜索食谱" />
+                  <input value={recipeSearch} onChange={(event) => setRecipeSearch(event.target.value)} placeholder="搜索标题、分类、食材" />
                 </div>
                 <div className="recipe-list">
                   {filteredRecipes.length === 0 ? (
@@ -808,12 +848,12 @@ function App() {
                     filteredRecipes.map((recipe) => (
                       <article className="recipe-card" key={recipe.id}>
                         <div>
-                          <h3>{recipe.title}</h3>
+                          <div className="recipe-card-title">
+                            <h3>{recipe.title}</h3>
+                            <span className="recipe-kind">{recipe.type === "simple" ? "简易" : "完整"}</span>
+                          </div>
                           <p>{recipe.category || "未分类"}</p>
-                          <span>
-                            {getRecipeFoodIngredients(recipe).length} 食材 · {getRecipeSeasonings(recipe).length} 调味料 ·{" "}
-                            {recipe.type === "simple" ? "简易" : "完整"}
-                          </span>
+                          <RecipeMeta recipe={recipe} />
                         </div>
                         <div className="card-actions">
                           <button className="icon-button" onClick={() => editRecipe(recipe)} title="编辑">
@@ -933,6 +973,19 @@ function SectionHeader({
   );
 }
 
+function RecipeMeta({ recipe }: { recipe: Recipe }) {
+  const parts = [
+    getRecipeFoodIngredients(recipe).length ? `${getRecipeFoodIngredients(recipe).length} 食材` : "",
+    getRecipeSeasonings(recipe).length ? `${getRecipeSeasonings(recipe).length} 调味料` : "",
+  ].filter(Boolean);
+
+  if (!parts.length) {
+    return null;
+  }
+
+  return <span>{parts.join(" · ")}</span>;
+}
+
 function PlanRow({
   slot,
   weekDays,
@@ -992,17 +1045,20 @@ function RecipeForm({
           <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="番茄炒蛋" />
         </label>
         <label>
+          类型
+          <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value as RecipeType }))}>
+            <option value="full">完整食谱</option>
+            <option value="simple">简易食谱</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="form-grid two">
+        <label>
           分类
           <input value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))} placeholder="家常菜" />
         </label>
       </div>
-      <label>
-        食谱类型
-        <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value as RecipeType }))}>
-          <option value="full">完整食谱</option>
-          <option value="simple">简易食谱</option>
-        </select>
-      </label>
 
       <ItemEditor
         title="食材"
