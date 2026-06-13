@@ -175,13 +175,14 @@ const migrateImportRecord = (record: Partial<ImportRecord>): ImportRecord => ({
 
 const createImportDraft = (recipe: Partial<Recipe> & { rawText: string; parseFailed?: boolean }): ImportDraft => ({
   id: createId(),
-  name: recipe.name ?? "",
+  title: recipe.title ?? "",
+  type: "full",
   category: "",
   ingredients: recipe.ingredients?.length ? recipe.ingredients : [createBlankItem("其他")],
-  seasonings: [],
-  steps: recipe.steps ?? "",
-  notes: "",
+  method: recipe.method ?? "",
   rawText: recipe.rawText,
+  createdAt: createTimestamp(),
+  updatedAt: createTimestamp(),
   parseFailed: Boolean(recipe.parseFailed),
 });
 
@@ -294,7 +295,7 @@ const parseRecipeImportText = (text: string): ImportDraft[] => {
     );
     const methodEndIndex =
       nextTitleLineIndex > methodLineIndex && methodLineIndex >= 0 ? nextTitleLineIndex : nextIngredientLineIndex;
-    const steps =
+    const method =
       methodLineIndex >= 0
         ? [textAfterField(lines[methodLineIndex], "做法"), ...lines.slice(methodLineIndex + 1, methodEndIndex)]
             .filter(Boolean)
@@ -314,11 +315,11 @@ const parseRecipeImportText = (text: string): ImportDraft[] => {
     const rawEndIndex = methodEndIndex > rawStartIndex ? methodEndIndex : nextIngredientLineIndex;
 
     return createImportDraft({
-      name: title,
+      title,
       ingredients,
-      steps,
+      method,
       rawText: lines.slice(rawStartIndex, rawEndIndex).join("\n"),
-      parseFailed: !title || !steps,
+      parseFailed: !title || !method,
     });
   });
 };
@@ -483,10 +484,10 @@ function App() {
   const parseImportText = () => {
     const drafts = parseRecipeImportText(importText);
     setImportDrafts(drafts);
-    setImportStatus(drafts.some((draft) => !draft.name.trim() || !draft.steps.trim()) ? "有内容需要手动补全" : "");
+    setImportStatus(drafts.some((draft) => !draft.title.trim() || !draft.method.trim()) ? "有内容需要手动补全" : "");
   };
 
-  const updateImportDraft = (draftId: string, field: "name" | "steps" | "rawText", value: string) => {
+  const updateImportDraft = (draftId: string, field: "title" | "method" | "rawText", value: string) => {
     setImportDrafts((current) => current.map((draft) => (draft.id === draftId ? { ...draft, [field]: value } : draft)));
   };
 
@@ -529,16 +530,18 @@ function App() {
     const recipes = importDrafts
       .map<Recipe>((draft) => ({
         id: draft.id,
-        name: draft.name.trim(),
+        title: draft.title.trim(),
+        type: "full",
         category: "",
         ingredients: draft.ingredients
           .map((item) => ({ ...item, name: item.name.trim(), amount: "", unit: "", category: item.category || "其他" }))
           .filter((item) => item.name),
-        seasonings: [],
-        steps: draft.steps.trim(),
-        notes: draft.parseFailed && draft.rawText.trim() ? `rawText:\n${draft.rawText.trim()}` : "",
+        method: draft.method.trim(),
+        rawText: draft.rawText.trim(),
+        createdAt: draft.createdAt,
+        updatedAt: createTimestamp(),
       }))
-      .filter((recipe) => recipe.name);
+      .filter((recipe) => recipe.title);
 
     if (!recipes.length) {
       setImportStatus("至少需要一个标题");
@@ -1109,7 +1112,7 @@ function ImportPreview({
   removeIngredient,
 }: {
   drafts: ImportDraft[];
-  updateDraft: (draftId: string, field: "name" | "steps" | "rawText", value: string) => void;
+  updateDraft: (draftId: string, field: "title" | "method" | "rawText", value: string) => void;
   updateIngredient: (draftId: string, itemId: string, name: string) => void;
   addIngredient: (draftId: string) => void;
   removeIngredient: (draftId: string, itemId: string) => void;
@@ -1127,7 +1130,7 @@ function ImportPreview({
             </div>
             <label>
               标题
-              <input value={draft.name} onChange={(event) => updateDraft(draft.id, "name", event.target.value)} placeholder="菜名" />
+              <input value={draft.title} onChange={(event) => updateDraft(draft.id, "title", event.target.value)} placeholder="菜名" />
             </label>
             <div className="item-editor">
               <div className="subsection-title">
@@ -1150,7 +1153,7 @@ function ImportPreview({
             </div>
             <label>
               做法
-              <textarea value={draft.steps} onChange={(event) => updateDraft(draft.id, "steps", event.target.value)} rows={5} />
+              <textarea value={draft.method} onChange={(event) => updateDraft(draft.id, "method", event.target.value)} rows={5} />
             </label>
             {draft.rawText && draft.parseFailed && (
               <label>
