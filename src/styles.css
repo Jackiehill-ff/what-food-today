@@ -359,13 +359,52 @@ label {
 }
 
 .editor-panel,
-.recipe-list-panel {
+.recipe-list-panel,
+.import-card {
   display: grid;
   gap: 18px;
   padding: 18px;
   border: 1px solid #dfe5dc;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.import-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.72fr) minmax(420px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.import-preview-panel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.import-card {
+  background: #fbfcfa;
+}
+
+.import-ingredient-list {
+  display: grid;
+  gap: 8px;
+}
+
+.import-ingredient-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  gap: 8px;
+  align-items: center;
+}
+
+.warning-pill {
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: #8a4d16;
+  background: #fbe8c9;
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .form-grid.two {
@@ -590,12 +629,16 @@ label {
     padding: 16px;
   }
 
-  .nav-tabs,
+  .nav-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .sidebar-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .recipe-layout {
+  .recipe-layout,
+  .import-layout {
     grid-template-columns: 1fr;
   }
 }

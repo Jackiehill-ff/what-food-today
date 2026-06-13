@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Copy,
   Edit3,
+  FileInput,
   Plus,
   Save,
   Search,
@@ -16,7 +17,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
-type Tab = "plan" | "recipes" | "shopping";
+type Tab = "plan" | "import" | "recipes" | "shopping";
 
 type Category = "蔬菜" | "豆类" | "谷类" | "调料" | "其他";
 
@@ -49,6 +50,11 @@ type ImportRecord = {
   rawText?: string;
   importedRecipeIds: string[];
   createdAt: string;
+};
+
+type ImportDraft = Recipe & {
+  rawText: string;
+  parseFailed: boolean;
 };
 
 type MealSlot = {
@@ -167,6 +173,18 @@ const migrateImportRecord = (record: Partial<ImportRecord>): ImportRecord => ({
   createdAt: record.createdAt || createTimestamp(),
 });
 
+const createImportDraft = (recipe: Partial<Recipe> & { rawText: string; parseFailed?: boolean }): ImportDraft => ({
+  id: createId(),
+  name: recipe.name ?? "",
+  category: "",
+  ingredients: recipe.ingredients?.length ? recipe.ingredients : [createBlankItem("其他")],
+  seasonings: [],
+  steps: recipe.steps ?? "",
+  notes: "",
+  rawText: recipe.rawText,
+  parseFailed: Boolean(recipe.parseFailed),
+});
+
 const loadState = (): AppState => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -240,6 +258,94 @@ const getRecipeSeasonings = (recipe: Recipe) => recipe.ingredients.filter((item)
 
 const getRecipeFoodIngredients = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category !== "调料");
 
+const FIELD_PATTERN = /^(食材|做法)\s*[:：]/;
+
+const isValidTitleLine = (line: string) => {
+  const trimmed = line.trim();
+  return Boolean(trimmed) && !trimmed.startsWith("#") && !FIELD_PATTERN.test(trimmed);
+};
+
+const textAfterField = (line: string, field: "食材" | "做法") =>
+  line.replace(new RegExp(`^${field}\\s*[:：]\\s*`), "").trim();
+
+const parseRecipeImportText = (text: string): ImportDraft[] => {
+  const lines = text.split(/\r?\n/).map((line) => line.trim());
+  const ingredientLineIndexes = lines.reduce<number[]>((indexes, line, index) => {
+    if (/^食材\s*[:：]/.test(line)) {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
+
+  if (!text.trim() || ingredientLineIndexes.length === 0) {
+    return [createImportDraft({ rawText: text, parseFailed: true })];
+  }
+
+  return ingredientLineIndexes.map((ingredientLineIndex, recipeIndex) => {
+    const nextIngredientLineIndex = ingredientLineIndexes[recipeIndex + 1] ?? lines.length;
+    const titleLineIndex = findPreviousIndex(lines, ingredientLineIndex - 1, isValidTitleLine);
+    const title = titleLineIndex >= 0 ? lines[titleLineIndex] : "";
+    const nextTitleLineIndex =
+      recipeIndex + 1 < ingredientLineIndexes.length
+        ? findPreviousIndex(lines, ingredientLineIndexes[recipeIndex + 1] - 1, isValidTitleLine)
+        : -1;
+    const methodLineIndex = findNextIndex(lines, ingredientLineIndex + 1, nextIngredientLineIndex, (line) =>
+      /^做法\s*[:：]/.test(line),
+    );
+    const methodEndIndex =
+      nextTitleLineIndex > methodLineIndex && methodLineIndex >= 0 ? nextTitleLineIndex : nextIngredientLineIndex;
+    const steps =
+      methodLineIndex >= 0
+        ? [textAfterField(lines[methodLineIndex], "做法"), ...lines.slice(methodLineIndex + 1, methodEndIndex)]
+            .filter(Boolean)
+            .join("\n")
+        : "";
+    const ingredients = textAfterField(lines[ingredientLineIndex], "食材")
+      .split(/[、，,]/)
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .map((name) => ({
+        ...createBlankItem("其他"),
+        name,
+        amount: "",
+        unit: "",
+      }));
+    const rawStartIndex = titleLineIndex >= 0 ? titleLineIndex : ingredientLineIndex;
+    const rawEndIndex = methodEndIndex > rawStartIndex ? methodEndIndex : nextIngredientLineIndex;
+
+    return createImportDraft({
+      name: title,
+      ingredients,
+      steps,
+      rawText: lines.slice(rawStartIndex, rawEndIndex).join("\n"),
+      parseFailed: !title || !steps,
+    });
+  });
+};
+
+const findPreviousIndex = (lines: string[], startIndex: number, predicate: (line: string) => boolean) => {
+  for (let index = startIndex; index >= 0; index -= 1) {
+    if (predicate(lines[index])) {
+      return index;
+    }
+  }
+  return -1;
+};
+
+const findNextIndex = (
+  lines: string[],
+  startIndex: number,
+  endIndex: number,
+  predicate: (line: string) => boolean,
+) => {
+  for (let index = startIndex; index < endIndex; index += 1) {
+    if (predicate(lines[index])) {
+      return index;
+    }
+  }
+  return -1;
+};
+
 function App() {
   const [appState, setAppState] = useState<AppState>(() => loadState());
   const [activeTab, setActiveTab] = useState<Tab>("plan");
@@ -249,6 +355,9 @@ function App() {
   const [recipeSearch, setRecipeSearch] = useState("");
   const [slotName, setSlotName] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
+  const [importText, setImportText] = useState("");
+  const [importDrafts, setImportDrafts] = useState<ImportDraft[]>([]);
+  const [importStatus, setImportStatus] = useState("");
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
@@ -369,6 +478,81 @@ function App() {
       setEditingRecipeId(null);
       setRecipeDraft(createBlankRecipe());
     }
+  };
+
+  const parseImportText = () => {
+    const drafts = parseRecipeImportText(importText);
+    setImportDrafts(drafts);
+    setImportStatus(drafts.some((draft) => !draft.name.trim() || !draft.steps.trim()) ? "有内容需要手动补全" : "");
+  };
+
+  const updateImportDraft = (draftId: string, field: "name" | "steps" | "rawText", value: string) => {
+    setImportDrafts((current) => current.map((draft) => (draft.id === draftId ? { ...draft, [field]: value } : draft)));
+  };
+
+  const updateImportIngredient = (draftId: string, itemId: string, name: string) => {
+    setImportDrafts((current) =>
+      current.map((draft) =>
+        draft.id === draftId
+          ? {
+              ...draft,
+              ingredients: draft.ingredients.map((item) => (item.id === itemId ? { ...item, name } : item)),
+            }
+          : draft,
+      ),
+    );
+  };
+
+  const addImportIngredient = (draftId: string) => {
+    setImportDrafts((current) =>
+      current.map((draft) =>
+        draft.id === draftId ? { ...draft, ingredients: [...draft.ingredients, createBlankItem("其他")] } : draft,
+      ),
+    );
+  };
+
+  const removeImportIngredient = (draftId: string, itemId: string) => {
+    setImportDrafts((current) =>
+      current.map((draft) =>
+        draft.id === draftId
+          ? {
+              ...draft,
+              ingredients:
+                draft.ingredients.length === 1 ? draft.ingredients : draft.ingredients.filter((item) => item.id !== itemId),
+            }
+          : draft,
+      ),
+    );
+  };
+
+  const saveImportedRecipes = () => {
+    const recipes = importDrafts
+      .map<Recipe>((draft) => ({
+        id: draft.id,
+        name: draft.name.trim(),
+        category: "",
+        ingredients: draft.ingredients
+          .map((item) => ({ ...item, name: item.name.trim(), amount: "", unit: "", category: item.category || "其他" }))
+          .filter((item) => item.name),
+        seasonings: [],
+        steps: draft.steps.trim(),
+        notes: draft.parseFailed && draft.rawText.trim() ? `rawText:\n${draft.rawText.trim()}` : "",
+      }))
+      .filter((recipe) => recipe.name);
+
+    if (!recipes.length) {
+      setImportStatus("至少需要一个标题");
+      return;
+    }
+
+    updateState((state) => ({
+      ...state,
+      recipes: [...recipes, ...state.recipes],
+    }));
+    setImportDrafts([]);
+    setImportText("");
+    setImportStatus(`已保存 ${recipes.length} 个食谱`);
+    setActiveTab("recipes");
   };
 
   const updateRecipeItem = (
@@ -497,6 +681,10 @@ function App() {
           <button className={activeTab === "plan" ? "active" : ""} onClick={() => setActiveTab("plan")}>
             <CalendarDays size={18} />
             周计划
+          </button>
+          <button className={activeTab === "import" ? "active" : ""} onClick={() => setActiveTab("import")}>
+            <FileInput size={18} />
+            导入中心
           </button>
           <button className={activeTab === "recipes" ? "active" : ""} onClick={() => setActiveTab("recipes")}>
             <Utensils size={18} />
@@ -637,6 +825,49 @@ function App() {
                   )}
                 </div>
               </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "import" && (
+          <section className="workspace">
+            <SectionHeader
+              icon={<FileInput size={22} />}
+              title="导入中心"
+              action={
+                <button className="primary-button" onClick={saveImportedRecipes} disabled={!importDrafts.length}>
+                  <Save size={16} />
+                  保存到食谱库
+                </button>
+              }
+            />
+            {importStatus && <div className="status-note">{importStatus}</div>}
+            <div className="import-layout">
+              <div className="editor-panel">
+                <label>
+                  粘贴文本
+                  <textarea
+                    value={importText}
+                    onChange={(event) => setImportText(event.target.value)}
+                    placeholder="#03Resource/植物领先/分类食谱/蔬菜&#10;干煸青椒苦瓜&#10;食材：青椒、苦瓜、姜、蒜、盐、酱油、白糖、植物油&#10;做法：锅中不放油..."
+                    rows={14}
+                  />
+                </label>
+                <div className="form-actions">
+                  <button className="primary-button" onClick={parseImportText} disabled={!importText.trim()}>
+                    <FileInput size={16} />
+                    解析
+                  </button>
+                </div>
+              </div>
+
+              <ImportPreview
+                drafts={importDrafts}
+                updateDraft={updateImportDraft}
+                updateIngredient={updateImportIngredient}
+                addIngredient={addImportIngredient}
+                removeIngredient={removeImportIngredient}
+              />
             </div>
           </section>
         )}
@@ -866,6 +1097,70 @@ function ItemEditor({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function ImportPreview({
+  drafts,
+  updateDraft,
+  updateIngredient,
+  addIngredient,
+  removeIngredient,
+}: {
+  drafts: ImportDraft[];
+  updateDraft: (draftId: string, field: "name" | "steps" | "rawText", value: string) => void;
+  updateIngredient: (draftId: string, itemId: string, name: string) => void;
+  addIngredient: (draftId: string) => void;
+  removeIngredient: (draftId: string, itemId: string) => void;
+}) {
+  return (
+    <div className="import-preview-panel">
+      {drafts.length === 0 ? (
+        <EmptyState title="等待解析" text="粘贴 flomo 或其他文本后，先解析再保存。" />
+      ) : (
+        drafts.map((draft, index) => (
+          <article className="import-card" key={draft.id}>
+            <div className="subsection-title">
+              <h3>预览 {index + 1}</h3>
+              {draft.parseFailed && <span className="warning-pill">需补全</span>}
+            </div>
+            <label>
+              标题
+              <input value={draft.name} onChange={(event) => updateDraft(draft.id, "name", event.target.value)} placeholder="菜名" />
+            </label>
+            <div className="item-editor">
+              <div className="subsection-title">
+                <h3>食材</h3>
+                <button className="ghost-button" onClick={() => addIngredient(draft.id)}>
+                  <Plus size={15} />
+                  添加
+                </button>
+              </div>
+              <div className="import-ingredient-list">
+                {draft.ingredients.map((item) => (
+                  <div className="import-ingredient-row" key={item.id}>
+                    <input value={item.name} onChange={(event) => updateIngredient(draft.id, item.id, event.target.value)} placeholder="名称" />
+                    <button className="icon-button" onClick={() => removeIngredient(draft.id, item.id)} title="删除">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <label>
+              做法
+              <textarea value={draft.steps} onChange={(event) => updateDraft(draft.id, "steps", event.target.value)} rows={5} />
+            </label>
+            {draft.rawText && draft.parseFailed && (
+              <label>
+                rawText
+                <textarea value={draft.rawText} onChange={(event) => updateDraft(draft.id, "rawText", event.target.value)} rows={4} />
+              </label>
+            )}
+          </article>
+        ))
+      )}
     </div>
   );
 }
