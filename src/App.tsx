@@ -1,10 +1,12 @@
 import {
+  ArrowRight,
   CalendarDays,
   Check,
   ClipboardList,
   Copy,
   Edit3,
   FileInput,
+  Home,
   ListPlus,
   Plus,
   Save,
@@ -18,7 +20,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
-type Tab = "plan" | "import" | "recipes" | "shopping";
+type Tab = "home" | "plan" | "import" | "recipes" | "shopping";
 
 type Category = "蔬菜" | "豆类" | "谷类" | "调料" | "其他";
 
@@ -105,9 +107,22 @@ type ShoppingListItem = {
   checked: boolean;
 };
 
+type NextMeal = {
+  entry: MealPlanEntry;
+  dateTime: Date;
+  slotName: string;
+  recipe: Recipe;
+};
+
 const STORAGE_KEY = "meal-planner-app-v1";
 
 const CATEGORIES: Category[] = ["蔬菜", "豆类", "谷类", "调料", "其他"];
+
+const DEFAULT_SLOT_TIMES: Record<string, { hour: number; minute: number }> = {
+  breakfast: { hour: 8, minute: 0 },
+  lunch: { hour: 12, minute: 0 },
+  dinner: { hour: 18, minute: 0 },
+};
 
 const DEFAULT_STATE: AppState = {
   recipes: [],
@@ -239,6 +254,58 @@ const toDateKey = (date: Date) => {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const formatDateLabel = (date: Date) =>
+  `${date.getMonth() + 1}月${date.getDate()}日 ${["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()]}`;
+
+const getSlotTime = (slot: MealSlot) => {
+  if (DEFAULT_SLOT_TIMES[slot.id]) {
+    return DEFAULT_SLOT_TIMES[slot.id];
+  }
+  if (slot.name.includes("早")) {
+    return DEFAULT_SLOT_TIMES.breakfast;
+  }
+  if (slot.name.includes("午")) {
+    return DEFAULT_SLOT_TIMES.lunch;
+  }
+  if (slot.name.includes("晚")) {
+    return DEFAULT_SLOT_TIMES.dinner;
+  }
+  return { hour: 23, minute: 59 };
+};
+
+const getMealDateTime = (dateKey: string, slot: MealSlot) => {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const slotTime = getSlotTime(slot);
+  return new Date(year, month - 1, day, slotTime.hour, slotTime.minute, 0, 0);
+};
+
+const findNextMeal = (
+  mealPlan: MealPlanEntry[],
+  mealSlots: MealSlot[],
+  recipesById: Map<string, Recipe>,
+  now = new Date(),
+): NextMeal | null => {
+  const slotsById = new Map(mealSlots.map((slot) => [slot.id, slot]));
+
+  return mealPlan
+    .map((entry) => {
+      const slot = slotsById.get(entry.slotId);
+      const recipe = recipesById.get(entry.recipeId);
+      if (!slot || !recipe) {
+        return null;
+      }
+      return {
+        entry,
+        dateTime: getMealDateTime(entry.date, slot),
+        slotName: slot.name || "未命名",
+        recipe,
+      };
+    })
+    .filter((meal): meal is NextMeal => meal !== null)
+    .filter((meal) => meal.dateTime > now)
+    .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime())[0] ?? null;
 };
 
 const getWeekStart = (date: Date) => {
@@ -385,7 +452,7 @@ const groupShoppingItems = (items: ShoppingListItem[]) => {
 
 function App() {
   const [appState, setAppState] = useState<AppState>(() => loadState());
-  const [activeTab, setActiveTab] = useState<Tab>("plan");
+  const [activeTab, setActiveTab] = useState<Tab>("home");
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [recipeDraft, setRecipeDraft] = useState<Recipe>(() => createBlankRecipe());
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
@@ -460,6 +527,11 @@ function App() {
   );
 
   const shoppingGroups = useMemo(() => groupShoppingItems(appState.shoppingItems), [appState.shoppingItems]);
+
+  const nextMeal = useMemo(
+    () => findNextMeal(appState.mealPlan, appState.mealSlots, recipesById),
+    [appState.mealPlan, appState.mealSlots, recipesById],
+  );
 
   const selectedCount = appState.mealPlan.filter((entry) => weekDays.some((day) => day.key === entry.date)).length;
   const selectedCandidateCount = shoppingCandidates.filter((candidate) => selectedCandidateIds[candidate.id] && !addedCandidateIds.has(candidate.id)).length;
@@ -793,6 +865,10 @@ function App() {
         </div>
 
         <nav className="nav-tabs" aria-label="主导航">
+          <button className={activeTab === "home" ? "active" : ""} onClick={() => setActiveTab("home")}>
+            <Home size={18} />
+            首页
+          </button>
           <button className={activeTab === "plan" ? "active" : ""} onClick={() => setActiveTab("plan")}>
             <CalendarDays size={18} />
             周计划
@@ -828,6 +904,18 @@ function App() {
       </aside>
 
       <main className="main-content">
+        {activeTab === "home" && (
+          <section className="workspace home-workspace">
+            <SectionHeader icon={<Home size={22} />} title="最近一餐" />
+            <NextMealCard
+              nextMeal={nextMeal}
+              onOpenRecipe={(recipe) => editRecipe(recipe)}
+              onOpenPlan={() => setActiveTab("plan")}
+              onOpenShopping={() => setActiveTab("shopping")}
+            />
+          </section>
+        )}
+
         {activeTab === "plan" && (
           <section className="workspace">
             <SectionHeader
@@ -1078,6 +1166,85 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   }
 
   return <span>{parts.join(" · ")}</span>;
+}
+
+function NextMealCard({
+  nextMeal,
+  onOpenRecipe,
+  onOpenPlan,
+  onOpenShopping,
+}: {
+  nextMeal: NextMeal | null;
+  onOpenRecipe: (recipe: Recipe) => void;
+  onOpenPlan: () => void;
+  onOpenShopping: () => void;
+}) {
+  if (!nextMeal) {
+    return (
+      <div className="next-meal-empty">
+        <EmptyState title="还没有未来计划" text="去周计划里安排下一餐，首页会自动显示最近要做的菜。" />
+        <button className="primary-button" onClick={onOpenPlan}>
+          <CalendarDays size={16} />
+          去周计划添加
+        </button>
+      </div>
+    );
+  }
+
+  const items = getItemsForRecipe(nextMeal.recipe);
+  const steps = nextMeal.recipe.method
+    .split("\n")
+    .map((step) => step.trim())
+    .filter(Boolean);
+
+  return (
+    <article className="next-meal-card">
+      <div className="next-meal-main">
+        <div className="next-meal-meta">
+          <span>{formatDateLabel(nextMeal.dateTime)}</span>
+          <span>{nextMeal.slotName}</span>
+        </div>
+        <h2>{nextMeal.recipe.title}</h2>
+        {nextMeal.recipe.category && <p>{nextMeal.recipe.category}</p>}
+      </div>
+
+      {items.length > 0 && (
+        <section className="next-meal-section">
+          <h3>食材</h3>
+          <div className="next-meal-items">
+            {items.map((item) => (
+              <span key={item.id}>
+                {item.name}
+                {[item.amount, item.unit].filter(Boolean).join("") && ` ${[item.amount, item.unit].filter(Boolean).join("")}`}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {steps.length > 0 && (
+        <section className="next-meal-section">
+          <h3>做法</h3>
+          <ol className="next-meal-steps">
+            {steps.map((step, index) => (
+              <li key={`${step}-${index}`}>{step}</li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      <div className="next-meal-actions">
+        <button className="ghost-button" onClick={() => onOpenRecipe(nextMeal.recipe)}>
+          <Utensils size={16} />
+          查看完整食谱
+        </button>
+        <button className="primary-button" onClick={onOpenShopping}>
+          查看采购候选
+          <ArrowRight size={16} />
+        </button>
+      </div>
+    </article>
+  );
 }
 
 function PlanRow({
