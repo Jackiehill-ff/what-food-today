@@ -142,6 +142,10 @@ button:disabled {
   margin: 0 auto;
 }
 
+.home-workspace {
+  max-width: 860px;
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -311,6 +315,94 @@ label {
   border: 1px solid #dfe5dc;
   border-radius: 8px;
   background: #ffffff;
+}
+
+.next-meal-card {
+  display: grid;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid #dfe5dc;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.next-meal-main {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e7ece4;
+}
+
+.next-meal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.next-meal-meta span {
+  padding: 5px 9px;
+  border-radius: 8px;
+  color: #315849;
+  background: #e4eee5;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.next-meal-main h2 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.next-meal-main p {
+  margin: 0;
+  color: #66776d;
+}
+
+.next-meal-section {
+  display: grid;
+  gap: 12px;
+}
+
+.next-meal-section h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.next-meal-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.next-meal-items span {
+  padding: 7px 10px;
+  border-radius: 8px;
+  color: #2d4d42;
+  background: #f2f6f1;
+  font-size: 14px;
+}
+
+.next-meal-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+  line-height: 1.65;
+}
+
+.next-meal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.next-meal-empty {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
 }
 
 .grid-head,
@@ -592,7 +684,7 @@ label {
 
   .nav-tabs,
   .sidebar-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .recipe-layout {
@@ -617,6 +709,19 @@ label {
 
   .section-header h2 {
     font-size: 24px;
+  }
+
+  .next-meal-card {
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .next-meal-main h2 {
+    font-size: 28px;
+  }
+
+  .next-meal-actions {
+    display: grid;
   }
 
   .nav-tabs {
