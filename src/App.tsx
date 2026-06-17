@@ -6,6 +6,7 @@ import {
   Copy,
   Edit3,
   FileInput,
+  GripVertical,
   Home,
   ListPlus,
   Plus,
@@ -18,13 +19,14 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { Dispatch, DragEvent, ReactNode, SetStateAction } from "react";
 
 type Tab = "home" | "plan" | "import" | "recipes" | "shopping";
 
 type Category = "蔬菜" | "豆类" | "谷类" | "调料" | "其他";
 
 type RecipeType = "full" | "simple";
+type RecipeSection = "ingredients" | "seasonings";
 
 type Ingredient = {
   id: string;
@@ -115,6 +117,7 @@ type NextMeal = {
 };
 
 const STORAGE_KEY = "meal-planner-app-v1";
+const RECIPE_ITEM_DRAG_TYPE = "application/x-recipe-item";
 
 const CATEGORIES: Category[] = ["蔬菜", "豆类", "谷类", "调料", "其他"];
 
@@ -457,6 +460,7 @@ function App() {
   const [recipeDraft, setRecipeDraft] = useState<Recipe>(() => createBlankRecipe());
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
   const [recipeSearch, setRecipeSearch] = useState("");
+  const [recipeCategory, setRecipeCategory] = useState("");
   const [quickRecipeName, setQuickRecipeName] = useState("");
   const [slotName, setSlotName] = useState("");
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Record<string, boolean>>({});
@@ -482,41 +486,58 @@ function App() {
     return new Map(appState.recipes.map((recipe) => [recipe.id, recipe]));
   }, [appState.recipes]);
 
+  const recipeCategories = useMemo(
+    () => Array.from(new Set(appState.recipes.map((recipe) => recipe.category.trim()).filter(Boolean))).sort(),
+    [appState.recipes],
+  );
+
+  useEffect(() => {
+    if (recipeCategory && !recipeCategories.includes(recipeCategory)) {
+      setRecipeCategory("");
+    }
+  }, [recipeCategories, recipeCategory]);
+
   const filteredRecipes = useMemo(() => {
     const keyword = recipeSearch.trim().toLowerCase();
-    if (!keyword) {
-      return appState.recipes;
-    }
     return appState.recipes.filter((recipe) => {
+      if (recipeCategory && recipe.category !== recipeCategory) {
+        return false;
+      }
+      if (!keyword) {
+        return true;
+      }
       const itemText = getItemsForRecipe(recipe)
         .map((item) => `${item.name} ${item.category}`)
         .join(" ");
       return [recipe.title, recipe.category, recipe.method, recipe.rawText, itemText].join(" ").toLowerCase().includes(keyword);
     });
-  }, [appState.recipes, recipeSearch]);
+  }, [appState.recipes, recipeCategory, recipeSearch]);
 
   const shoppingCandidates = useMemo(() => {
     return weekDays.flatMap((day) =>
       appState.mealSlots.flatMap((slot) => {
-        const entry = appState.mealPlan.find((planEntry) => planEntry.date === day.key && planEntry.slotId === slot.id);
-        const recipe = entry ? recipesById.get(entry.recipeId) : undefined;
-        if (!entry || !recipe) {
-          return [];
-        }
-        return getItemsForRecipe(recipe).map((sourceItem) => ({
-          id: `${day.key}|${slot.id}|${recipe.id}|${sourceItem.id}`,
-          date: day.key,
-          dayName: day.dayName,
-          dayLabel: day.label,
-          slotId: slot.id,
-          slotName: slot.name || "未命名",
-          recipeId: recipe.id,
-          recipeName: recipe.title,
-          name: sourceItem.name.trim(),
-          amount: sourceItem.amount.trim(),
-          unit: sourceItem.unit.trim(),
-          category: sourceItem.category,
-        }));
+        return appState.mealPlan
+          .filter((entry) => entry.date === day.key && entry.slotId === slot.id)
+          .flatMap((entry) => {
+            const recipe = recipesById.get(entry.recipeId);
+            if (!recipe) {
+              return [];
+            }
+            return getItemsForRecipe(recipe).map((sourceItem) => ({
+              id: `${day.key}|${slot.id}|${recipe.id}|${sourceItem.id}`,
+              date: day.key,
+              dayName: day.dayName,
+              dayLabel: day.label,
+              slotId: slot.id,
+              slotName: slot.name || "未命名",
+              recipeId: recipe.id,
+              recipeName: recipe.title,
+              name: sourceItem.name.trim(),
+              amount: sourceItem.amount.trim(),
+              unit: sourceItem.unit.trim(),
+              category: sourceItem.category,
+            }));
+          });
       }),
     );
   }, [appState.mealPlan, appState.mealSlots, recipesById, weekDays]);
@@ -680,12 +701,7 @@ function App() {
     setActiveTab("recipes");
   };
 
-  const updateRecipeItem = (
-    section: "ingredients" | "seasonings",
-    itemId: string,
-    field: keyof Ingredient,
-    value: string,
-  ) => {
+  const updateRecipeItem = (section: RecipeSection, itemId: string, field: keyof Ingredient, value: string) => {
     setRecipeDraft((current) => ({
       ...current,
       ingredients: current.ingredients.map((item) =>
@@ -694,14 +710,14 @@ function App() {
     }));
   };
 
-  const addRecipeItem = (section: "ingredients" | "seasonings") => {
+  const addRecipeItem = (section: RecipeSection) => {
     setRecipeDraft((current) => ({
       ...current,
       ingredients: [...current.ingredients, createBlankItem(section === "seasonings" ? "调料" : "蔬菜")],
     }));
   };
 
-  const removeRecipeItem = (section: "ingredients" | "seasonings", itemId: string) => {
+  const removeRecipeItem = (section: RecipeSection, itemId: string) => {
     setRecipeDraft((current) => ({
       ...current,
       ingredients:
@@ -711,18 +727,42 @@ function App() {
     }));
   };
 
-  const setPlanRecipe = (date: string, slotId: string, recipeId: string) => {
+  const moveRecipeItem = (source: RecipeSection, target: RecipeSection, itemId: string) => {
+    if (source === target) {
+      return;
+    }
+    setRecipeDraft((current) => ({
+      ...current,
+      ingredients: current.ingredients.map((item) =>
+        item.id === itemId ? { ...item, category: target === "seasonings" ? "调料" : "蔬菜" } : item,
+      ),
+    }));
+  };
+
+  const togglePlanRecipe = (date: string, slotId: string, recipeId: string) => {
     updateState((state) => {
-      const nextPlan = state.mealPlan.filter((entry) => !(entry.date === date && entry.slotId === slotId));
-      if (recipeId) {
-        nextPlan.push({ date, slotId, recipeId });
+      const exists = state.mealPlan.some(
+        (entry) => entry.date === date && entry.slotId === slotId && entry.recipeId === recipeId,
+      );
+      if (exists) {
+        return {
+          ...state,
+          mealPlan: state.mealPlan.filter(
+            (entry) => !(entry.date === date && entry.slotId === slotId && entry.recipeId === recipeId),
+          ),
+        };
       }
-      return { ...state, mealPlan: nextPlan };
+      return {
+        ...state,
+        mealPlan: [...state.mealPlan, { date, slotId, recipeId }],
+      };
     });
   };
 
-  const getPlannedRecipeId = (date: string, slotId: string) =>
-    appState.mealPlan.find((entry) => entry.date === date && entry.slotId === slotId)?.recipeId ?? "";
+  const getPlannedRecipeIds = (date: string, slotId: string) =>
+    appState.mealPlan
+      .filter((entry) => entry.date === date && entry.slotId === slotId)
+      .map((entry) => entry.recipeId);
 
   const addMealSlot = () => {
     const name = slotName.trim();
@@ -970,8 +1010,8 @@ function App() {
                   slot={slot}
                   weekDays={weekDays}
                   recipes={appState.recipes}
-                  getPlannedRecipeId={getPlannedRecipeId}
-                  setPlanRecipe={setPlanRecipe}
+                  getPlannedRecipeIds={getPlannedRecipeIds}
+                  togglePlanRecipe={togglePlanRecipe}
                 />
               ))}
             </div>
@@ -994,6 +1034,7 @@ function App() {
                 updateRecipeItem={updateRecipeItem}
                 addRecipeItem={addRecipeItem}
                 removeRecipeItem={removeRecipeItem}
+                moveRecipeItem={moveRecipeItem}
               />
 
               <div className="recipe-list-panel">
@@ -1017,6 +1058,22 @@ function App() {
                   <Search size={17} />
                   <input value={recipeSearch} onChange={(event) => setRecipeSearch(event.target.value)} placeholder="搜索标题、分类、食材" />
                 </div>
+                {recipeCategories.length > 0 && (
+                  <div className="category-filters">
+                    <button className={recipeCategory === "" ? "active" : ""} onClick={() => setRecipeCategory("")}>
+                      全部
+                    </button>
+                    {recipeCategories.map((category) => (
+                      <button
+                        className={recipeCategory === category ? "active" : ""}
+                        key={category}
+                        onClick={() => setRecipeCategory(category)}
+                      >
+                        {category}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="recipe-list">
                   {filteredRecipes.length === 0 ? (
                     <EmptyState title="还没有食谱" text="先新增一道常做菜，再把它安排到周计划里。" />
@@ -1251,14 +1308,14 @@ function PlanRow({
   slot,
   weekDays,
   recipes,
-  getPlannedRecipeId,
-  setPlanRecipe,
+  getPlannedRecipeIds,
+  togglePlanRecipe,
 }: {
   slot: MealSlot;
   weekDays: ReturnType<typeof getWeekDays>;
   recipes: Recipe[];
-  getPlannedRecipeId: (date: string, slotId: string) => string;
-  setPlanRecipe: (date: string, slotId: string, recipeId: string) => void;
+  getPlannedRecipeIds: (date: string, slotId: string) => string[];
+  togglePlanRecipe: (date: string, slotId: string, recipeId: string) => void;
 }) {
   return (
     <>
@@ -1266,9 +1323,9 @@ function PlanRow({
       {weekDays.map((day) => (
         <div className="plan-cell" key={`${day.key}-${slot.id}`}>
           <PlanRecipePicker
-            value={getPlannedRecipeId(day.key, slot.id)}
+            values={getPlannedRecipeIds(day.key, slot.id)}
             recipes={recipes}
-            setPlanRecipe={(recipeId) => setPlanRecipe(day.key, slot.id, recipeId)}
+            toggleRecipe={(recipeId) => togglePlanRecipe(day.key, slot.id, recipeId)}
           />
         </div>
       ))}
@@ -1277,45 +1334,57 @@ function PlanRow({
 }
 
 function PlanRecipePicker({
-  value,
+  values,
   recipes,
-  setPlanRecipe,
+  toggleRecipe,
 }: {
-  value: string;
+  values: string[];
   recipes: Recipe[];
-  setPlanRecipe: (recipeId: string) => void;
+  toggleRecipe: (recipeId: string) => void;
 }) {
   const [keyword, setKeyword] = useState("");
-  const selectedRecipe = recipes.find((recipe) => recipe.id === value);
+  const selectedRecipes = values.flatMap((value) => {
+    const recipe = recipes.find((candidate) => candidate.id === value);
+    return recipe ? [recipe] : [];
+  });
   const filteredRecipes = useMemo(() => {
     const normalized = keyword.trim().toLowerCase();
     if (!normalized) {
-      return recipes.slice(0, 5);
+      return [];
     }
     return recipes
-      .filter((recipe) => [recipe.title, recipe.category, recipe.method, recipe.rawText].join(" ").toLowerCase().includes(normalized))
+      .filter(
+        (recipe) =>
+          !values.includes(recipe.id) &&
+          [recipe.title, recipe.category, recipe.method, recipe.rawText].join(" ").toLowerCase().includes(normalized),
+      )
       .slice(0, 6);
-  }, [keyword, recipes]);
+  }, [keyword, recipes, values]);
 
   return (
     <div className="plan-picker">
-      <div className="plan-picker-current">
-        <strong>{selectedRecipe?.title ?? "不安排"}</strong>
-        {value && (
-          <button className="icon-button" onClick={() => setPlanRecipe("")} title="取消安排">
-            <X size={14} />
-          </button>
-        )}
-      </div>
+      {selectedRecipes.length > 0 ? (
+        <div className="plan-picker-selected">
+          {selectedRecipes.map((recipe) => (
+            <span className="plan-recipe-chip" key={recipe.id}>
+              {recipe.title}
+              <button onClick={() => toggleRecipe(recipe.id)} title={`移除${recipe.title}`}>
+                <X size={13} />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="plan-picker-empty">不安排</div>
+      )}
       <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索食谱" />
-      {filteredRecipes.length > 0 && (
+      {keyword.trim() && filteredRecipes.length > 0 && (
         <div className="plan-picker-results">
           {filteredRecipes.map((recipe) => (
             <button
-              className={recipe.id === value ? "active" : ""}
               key={recipe.id}
               onClick={() => {
-                setPlanRecipe(recipe.id);
+                toggleRecipe(recipe.id);
                 setKeyword("");
               }}
             >
@@ -1337,15 +1406,17 @@ function RecipeForm({
   updateRecipeItem,
   addRecipeItem,
   removeRecipeItem,
+  moveRecipeItem,
 }: {
   draft: Recipe;
   editingRecipeId: string | null;
   setDraft: Dispatch<SetStateAction<Recipe>>;
   saveRecipe: () => void;
   cancelEdit: () => void;
-  updateRecipeItem: (section: "ingredients" | "seasonings", itemId: string, field: keyof Ingredient, value: string) => void;
-  addRecipeItem: (section: "ingredients" | "seasonings") => void;
-  removeRecipeItem: (section: "ingredients" | "seasonings", itemId: string) => void;
+  updateRecipeItem: (section: RecipeSection, itemId: string, field: keyof Ingredient, value: string) => void;
+  addRecipeItem: (section: RecipeSection) => void;
+  removeRecipeItem: (section: RecipeSection, itemId: string) => void;
+  moveRecipeItem: (source: RecipeSection, target: RecipeSection, itemId: string) => void;
 }) {
   return (
     <div className="editor-panel">
@@ -1377,6 +1448,7 @@ function RecipeForm({
         updateRecipeItem={updateRecipeItem}
         addRecipeItem={addRecipeItem}
         removeRecipeItem={removeRecipeItem}
+        moveRecipeItem={moveRecipeItem}
       />
 
       <ItemEditor
@@ -1386,6 +1458,7 @@ function RecipeForm({
         updateRecipeItem={updateRecipeItem}
         addRecipeItem={addRecipeItem}
         removeRecipeItem={removeRecipeItem}
+        moveRecipeItem={moveRecipeItem}
       />
 
       <label>
@@ -1430,16 +1503,39 @@ function ItemEditor({
   updateRecipeItem,
   addRecipeItem,
   removeRecipeItem,
+  moveRecipeItem,
 }: {
   title: string;
   items: Ingredient[];
-  section: "ingredients" | "seasonings";
-  updateRecipeItem: (section: "ingredients" | "seasonings", itemId: string, field: keyof Ingredient, value: string) => void;
-  addRecipeItem: (section: "ingredients" | "seasonings") => void;
-  removeRecipeItem: (section: "ingredients" | "seasonings", itemId: string) => void;
+  section: RecipeSection;
+  updateRecipeItem: (section: RecipeSection, itemId: string, field: keyof Ingredient, value: string) => void;
+  addRecipeItem: (section: RecipeSection) => void;
+  removeRecipeItem: (section: RecipeSection, itemId: string) => void;
+  moveRecipeItem: (source: RecipeSection, target: RecipeSection, itemId: string) => void;
 }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragOver(false);
+    const [source, itemId] = event.dataTransfer.getData(RECIPE_ITEM_DRAG_TYPE).split("|");
+    if ((source === "ingredients" || source === "seasonings") && itemId) {
+      moveRecipeItem(source, section, itemId);
+    }
+  };
+
   return (
-    <div className="item-editor">
+    <div
+      className={`item-editor ${isDragOver ? "drag-over" : ""}`}
+      onDragEnter={() => setIsDragOver(true)}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsDragOver(false);
+        }
+      }}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={handleDrop}
+    >
       <div className="subsection-title">
         <h3>{title}</h3>
         <button className="ghost-button" onClick={() => addRecipeItem(section)}>
@@ -1450,6 +1546,18 @@ function ItemEditor({
       <div className="item-table">
         {items.map((item) => (
           <div className="item-row" key={item.id}>
+            <button
+              className="drag-handle"
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData(RECIPE_ITEM_DRAG_TYPE, `${section}|${item.id}`);
+              }}
+              title={`拖动到${section === "ingredients" ? "调味料" : "食材"}`}
+              type="button"
+            >
+              <GripVertical size={17} />
+            </button>
             <input value={item.name} onChange={(event) => updateRecipeItem(section, item.id, "name", event.target.value)} placeholder="名称" />
             <input value={item.amount} onChange={(event) => updateRecipeItem(section, item.id, "amount", event.target.value)} placeholder="数量" />
             <input value={item.unit} onChange={(event) => updateRecipeItem(section, item.id, "unit", event.target.value)} placeholder="单位" />
