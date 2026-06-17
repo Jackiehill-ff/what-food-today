@@ -1001,7 +1001,6 @@ function App() {
                         <div>
                           <div className="recipe-card-title">
                             <h3>{recipe.title}</h3>
-                            <span className="recipe-kind">{recipe.type === "simple" ? "简易" : "完整"}</span>
                           </div>
                           <p>{recipe.category || "未分类"}</p>
                           <RecipeMeta recipe={recipe} />
@@ -1211,7 +1210,7 @@ function NextMealCard({
       <div className="next-meal-actions">
         <button className="ghost-button" onClick={() => onOpenRecipe(nextMeal.recipe)}>
           <Utensils size={16} />
-          查看完整食谱
+          查看食谱
         </button>
         <button className="primary-button" onClick={onOpenShopping}>
           查看采购候选
@@ -1343,16 +1342,6 @@ function RecipeForm({
           食谱名称
           <input value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="番茄炒蛋" />
         </label>
-        <label>
-          类型
-          <select value={draft.type} onChange={(event) => setDraft((current) => ({ ...current, type: event.target.value as RecipeType }))}>
-            <option value="full">完整食谱</option>
-            <option value="simple">简易食谱</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="form-grid two">
         <label>
           分类
           <input value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))} placeholder="家常菜" />

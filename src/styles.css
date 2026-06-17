@@ -392,7 +392,12 @@ label {
 .plan-picker {
   display: grid;
   gap: 8px;
-  min-width: 150px;
+  width: 100%;
+  min-width: 0;
+}
+
+.plan-picker input {
+  min-width: 0;
 }
 
 .plan-picker-selected {
@@ -651,15 +656,6 @@ label {
 
 .recipe-card h3 {
   font-size: 18px;
-}
-
-.recipe-kind {
-  padding: 2px 7px;
-  border: 1px solid #d9e2d8;
-  border-radius: 8px;
-  color: #557064;
-  background: #ffffff;
-  font-size: 12px;
 }
 
 .recipe-card p,
