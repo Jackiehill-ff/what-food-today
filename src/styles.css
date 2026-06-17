@@ -167,8 +167,7 @@ button:disabled {
 
 .primary-button,
 .ghost-button,
-.icon-button,
-.add-inline button {
+.icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -192,8 +191,7 @@ button:disabled {
   background: #275c49;
 }
 
-.ghost-button,
-.add-inline button {
+.ghost-button {
   padding: 0 12px;
   color: #2d4d42;
   background: #ffffff;
@@ -201,7 +199,6 @@ button:disabled {
 }
 
 .ghost-button:hover,
-.add-inline button:hover,
 .icon-button:hover {
   border-color: #88a394;
 }
@@ -260,53 +257,6 @@ label {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.slot-manager {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid #dfe5dc;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.slot-list,
-.add-inline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.slot-chip {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 168px;
-  padding: 4px;
-  border: 1px solid #dfe5dc;
-  border-radius: 8px;
-  background: #f7faf6;
-}
-
-.slot-chip input {
-  min-height: 30px;
-  border: 0;
-  background: transparent;
-}
-
-.slot-chip button {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  color: #6e7a73;
-  background: transparent;
-}
-
-.add-inline input {
-  width: 180px;
 }
 
 .plan-grid {
@@ -631,12 +581,6 @@ label {
 .card-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-}
-
-.quick-add {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
 }
 
@@ -965,7 +909,6 @@ label {
 
   .form-grid.two,
   .item-row,
-  .quick-add,
   .manual-shopping-grid {
     grid-template-columns: 1fr;
   }

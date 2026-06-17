@@ -127,14 +127,16 @@ const DEFAULT_SLOT_TIMES: Record<string, { hour: number; minute: number }> = {
   dinner: { hour: 18, minute: 0 },
 };
 
+const FIXED_MEAL_SLOTS: MealSlot[] = [
+  { id: "breakfast", name: "早餐" },
+  { id: "lunch", name: "午餐" },
+  { id: "dinner", name: "晚餐" },
+];
+
 const DEFAULT_STATE: AppState = {
   recipes: [],
   importRecords: [],
-  mealSlots: [
-    { id: "breakfast", name: "早餐" },
-    { id: "lunch", name: "午餐" },
-    { id: "dinner", name: "晚餐" },
-  ],
+  mealSlots: FIXED_MEAL_SLOTS,
   mealPlan: [],
   shoppingItems: [],
 };
@@ -225,13 +227,6 @@ const createImportDraft = (recipe: Partial<Recipe> & { rawText: string; parseFai
   parseFailed: Boolean(recipe.parseFailed),
 });
 
-const createSimpleRecipe = (title = ""): Recipe => ({
-  ...createBlankRecipe(),
-  type: "simple",
-  title,
-  ingredients: [],
-});
-
 const loadState = (): AppState => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -243,8 +238,8 @@ const loadState = (): AppState => {
     return {
       recipes,
       importRecords: Array.isArray(parsed.importRecords) ? parsed.importRecords.map(migrateImportRecord) : [],
-      mealSlots: parsed.mealSlots?.length ? parsed.mealSlots : DEFAULT_STATE.mealSlots,
-      mealPlan: parsed.mealPlan ?? [],
+      mealSlots: FIXED_MEAL_SLOTS,
+      mealPlan: (parsed.mealPlan ?? []).filter((entry) => FIXED_MEAL_SLOTS.some((slot) => slot.id === entry.slotId)),
       shoppingItems: parsed.shoppingItems ?? [],
     };
   } catch {
@@ -461,8 +456,6 @@ function App() {
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeCategory, setRecipeCategory] = useState("");
-  const [quickRecipeName, setQuickRecipeName] = useState("");
-  const [slotName, setSlotName] = useState("");
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Record<string, boolean>>({});
   const [manualItem, setManualItem] = useState({
     date: "",
@@ -515,7 +508,7 @@ function App() {
 
   const shoppingCandidates = useMemo(() => {
     return weekDays.flatMap((day) =>
-      appState.mealSlots.flatMap((slot) => {
+      FIXED_MEAL_SLOTS.flatMap((slot) => {
         return appState.mealPlan
           .filter((entry) => entry.date === day.key && entry.slotId === slot.id)
           .flatMap((entry) => {
@@ -540,7 +533,7 @@ function App() {
           });
       }),
     );
-  }, [appState.mealPlan, appState.mealSlots, recipesById, weekDays]);
+  }, [appState.mealPlan, recipesById, weekDays]);
 
   const addedCandidateIds = useMemo(
     () => new Set(appState.shoppingItems.flatMap((item) => (item.sourceCandidateId ? [item.sourceCandidateId] : []))),
@@ -550,8 +543,8 @@ function App() {
   const shoppingGroups = useMemo(() => groupShoppingItems(appState.shoppingItems), [appState.shoppingItems]);
 
   const nextMeal = useMemo(
-    () => findNextMeal(appState.mealPlan, appState.mealSlots, recipesById),
-    [appState.mealPlan, appState.mealSlots, recipesById],
+    () => findNextMeal(appState.mealPlan, FIXED_MEAL_SLOTS, recipesById),
+    [appState.mealPlan, recipesById],
   );
 
   const selectedCount = appState.mealPlan.filter((entry) => weekDays.some((day) => day.key === entry.date)).length;
@@ -560,18 +553,6 @@ function App() {
 
   const updateState = (updater: (state: AppState) => AppState) => {
     setAppState((current) => updater(current));
-  };
-
-  const addQuickRecipe = () => {
-    const name = quickRecipeName.trim();
-    if (!name) {
-      return;
-    }
-    updateState((state) => ({
-      ...state,
-      recipes: [createSimpleRecipe(name), ...state.recipes],
-    }));
-    setQuickRecipeName("");
   };
 
   const saveRecipe = () => {
@@ -764,33 +745,6 @@ function App() {
       .filter((entry) => entry.date === date && entry.slotId === slotId)
       .map((entry) => entry.recipeId);
 
-  const addMealSlot = () => {
-    const name = slotName.trim();
-    if (!name) {
-      return;
-    }
-    updateState((state) => ({
-      ...state,
-      mealSlots: [...state.mealSlots, { id: createId(), name }],
-    }));
-    setSlotName("");
-  };
-
-  const renameMealSlot = (slotId: string, name: string) => {
-    updateState((state) => ({
-      ...state,
-      mealSlots: state.mealSlots.map((slot) => (slot.id === slotId ? { ...slot, name } : slot)),
-    }));
-  };
-
-  const deleteMealSlot = (slotId: string) => {
-    updateState((state) => ({
-      ...state,
-      mealSlots: state.mealSlots.filter((slot) => slot.id !== slotId),
-      mealPlan: state.mealPlan.filter((entry) => entry.slotId !== slotId),
-    }));
-  };
-
   const toggleCandidate = (id: string) => {
     setSelectedCandidateIds((current) => ({
       ...current,
@@ -976,26 +930,6 @@ function App() {
               }
             />
 
-            <div className="slot-manager">
-              <div className="slot-list">
-                {appState.mealSlots.map((slot) => (
-                  <div className="slot-chip" key={slot.id}>
-                    <input value={slot.name} onChange={(event) => renameMealSlot(slot.id, event.target.value)} />
-                    <button onClick={() => deleteMealSlot(slot.id)} title="删除餐次">
-                      <X size={15} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="add-inline">
-                <input value={slotName} onChange={(event) => setSlotName(event.target.value)} placeholder="新增餐次" />
-                <button onClick={addMealSlot}>
-                  <Plus size={16} />
-                  添加
-                </button>
-              </div>
-            </div>
-
             <div className="plan-grid" style={{ gridTemplateColumns: `minmax(92px, 0.7fr) repeat(${weekDays.length}, minmax(150px, 1fr))` }}>
               <div className="grid-head">餐次</div>
               {weekDays.map((day) => (
@@ -1004,7 +938,7 @@ function App() {
                   <span>{day.label}</span>
                 </div>
               ))}
-              {appState.mealSlots.map((slot) => (
+              {FIXED_MEAL_SLOTS.map((slot) => (
                 <PlanRow
                   key={slot.id}
                   slot={slot}
@@ -1038,22 +972,6 @@ function App() {
               />
 
               <div className="recipe-list-panel">
-                <div className="quick-add">
-                  <input
-                    value={quickRecipeName}
-                    onChange={(event) => setQuickRecipeName(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        addQuickRecipe();
-                      }
-                    }}
-                    placeholder="快速添加简易食谱，如米饭"
-                  />
-                  <button className="ghost-button" onClick={addQuickRecipe} disabled={!quickRecipeName.trim()}>
-                    <Plus size={16} />
-                    添加简易
-                  </button>
-                </div>
                 <div className="search-box">
                   <Search size={17} />
                   <input value={recipeSearch} onChange={(event) => setRecipeSearch(event.target.value)} placeholder="搜索标题、分类、食材" />
