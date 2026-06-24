@@ -33,6 +33,10 @@
 
 ## 账号 + 云同步前置原则
 
+- 第一版账号 + 云同步方案采用 Supabase Auth + Supabase Postgres + RLS。
+- 前端只能使用 publishable key；secret/service key 不能进入浏览器代码或环境变量示例。
+- 未配置 Supabase 时必须自动降级为纯本地模式。
+- v1 登录方式优先邮箱 Magic Link/OTP；GitHub OAuth 可作为后续第二入口。
 - 账号系统不应阻断当前本地使用方式。
 - 云同步上线前必须明确首次登录的数据合并策略。
 - 必须明确同一用户多设备编辑时的冲突处理策略。

@@ -9,19 +9,24 @@ import {
   GripVertical,
   Home,
   ListPlus,
+  LogIn,
+  LogOut,
   Plus,
   Save,
   Search,
   ShoppingBasket,
   Soup,
   Trash2,
+  UserRound,
   Utensils,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, DragEvent, ReactNode, SetStateAction } from "react";
+import type { Dispatch, DragEvent, FormEvent, ReactNode, SetStateAction } from "react";
 
-import { loadAppState, saveAppState } from "./data/appStorage";
+import { useAuthSession } from "./auth/useAuthSession";
+import { localAppStateRepository } from "./data/appStateRepository";
+import { createAppStateBackup, loadSyncMetadata, saveSyncMetadata } from "./data/syncStorage";
 import { CATEGORIES, FIXED_MEAL_SLOTS, RECIPE_ITEM_DRAG_TYPE } from "./domain/constants";
 import { createId, createTimestamp } from "./domain/ids";
 import { parseRecipeImportText } from "./domain/importParser";
@@ -47,9 +52,12 @@ import type {
   ShoppingListItem,
   Tab,
 } from "./domain/types";
+import type { SyncStatus } from "./domain/sync";
 
 function App() {
-  const [appState, setAppState] = useState<AppState>(() => loadAppState());
+  const auth = useAuthSession();
+  const [appState, setAppState] = useState<AppState>(() => localAppStateRepository.load());
+  const [syncMetadata, setSyncMetadata] = useState(() => loadSyncMetadata());
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [recipeDraft, setRecipeDraft] = useState<Recipe>(() => createBlankRecipe());
@@ -68,10 +76,37 @@ function App() {
   const [importText, setImportText] = useState("");
   const [importDrafts, setImportDrafts] = useState<ImportDraft[]>([]);
   const [importStatus, setImportStatus] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
+  const [backupStatus, setBackupStatus] = useState("");
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
 
   useEffect(() => {
-    saveAppState(appState);
+    localAppStateRepository.save(appState);
   }, [appState]);
+
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+    return () => {
+      window.removeEventListener("online", updateOnlineStatus);
+      window.removeEventListener("offline", updateOnlineStatus);
+    };
+  }, []);
+
+  useEffect(() => {
+    const userId = auth.session?.user.id;
+    setSyncMetadata((current) => {
+      const syncStatus: SyncStatus = userId ? (current.syncStatus === "local-only" ? "pending" : current.syncStatus) : "local-only";
+      const next = {
+        ...current,
+        userId,
+        syncStatus,
+      };
+      saveSyncMetadata(next);
+      return next;
+    });
+  }, [auth.session?.user.id]);
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
 
@@ -420,6 +455,21 @@ function App() {
     window.setTimeout(() => setCopyStatus(""), 1800);
   };
 
+  const createLocalBackup = () => {
+    const backupKey = createAppStateBackup();
+    if (!backupKey) {
+      setBackupStatus("暂无本地数据可备份");
+      return;
+    }
+
+    setSyncMetadata((current) => {
+      const next = { ...current, migrationStatus: "backup-created" as const };
+      saveSyncMetadata(next);
+      return next;
+    });
+    setBackupStatus("已创建本地备份");
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -455,6 +505,15 @@ function App() {
             采购清单
           </button>
         </nav>
+
+        <AccountPanel
+          auth={auth}
+          email={accountEmail}
+          setEmail={setAccountEmail}
+          syncStatus={getSyncStatusLabel(auth.isConfigured, auth.session?.user.id, syncMetadata.syncStatus, isOnline)}
+          backupStatus={backupStatus}
+          createLocalBackup={createLocalBackup}
+        />
 
         <div className="sidebar-stats">
           <div>
@@ -675,6 +734,85 @@ function App() {
         )}
       </main>
     </div>
+  );
+}
+
+const getSyncStatusLabel = (isConfigured: boolean, userId: string | undefined, syncStatus: string, isOnline: boolean) => {
+  if (!isConfigured) {
+    return "本地模式";
+  }
+  if (!userId) {
+    return "未登录";
+  }
+  if (!isOnline) {
+    return "离线";
+  }
+  if (syncStatus === "synced") {
+    return "已同步";
+  }
+  if (syncStatus === "failed") {
+    return "同步失败";
+  }
+  return "待同步";
+};
+
+function AccountPanel({
+  auth,
+  email,
+  setEmail,
+  syncStatus,
+  backupStatus,
+  createLocalBackup,
+}: {
+  auth: ReturnType<typeof useAuthSession>;
+  email: string;
+  setEmail: Dispatch<SetStateAction<string>>;
+  syncStatus: string;
+  backupStatus: string;
+  createLocalBackup: () => void;
+}) {
+  const userEmail = auth.session?.user.email ?? "";
+
+  const submitEmail = (event: FormEvent) => {
+    event.preventDefault();
+    auth.signInWithEmail(email);
+  };
+
+  return (
+    <section className="account-panel">
+      <div className="account-heading">
+        <UserRound size={17} />
+        <span>账号</span>
+        <strong>{syncStatus}</strong>
+      </div>
+
+      {!auth.isConfigured ? (
+        <p>未配置云端，当前继续使用本地数据。</p>
+      ) : userEmail ? (
+        <>
+          <p>{userEmail}</p>
+          <div className="account-actions">
+            <button className="ghost-button" onClick={createLocalBackup}>
+              创建备份
+            </button>
+            <button className="ghost-button" onClick={auth.signOut}>
+              <LogOut size={15} />
+              退出
+            </button>
+          </div>
+        </>
+      ) : (
+        <form className="account-form" onSubmit={submitEmail}>
+          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="邮箱 Magic Link" type="email" />
+          <button className="primary-button" disabled={!email.trim() || auth.isLoading}>
+            <LogIn size={15} />
+            发送
+          </button>
+        </form>
+      )}
+
+      {(auth.message || backupStatus) && <p className="account-message">{backupStatus || auth.message}</p>}
+    </section>
   );
 }
 

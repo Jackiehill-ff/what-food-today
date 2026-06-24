@@ -106,6 +106,60 @@ button:disabled {
   background: #f8d46b;
 }
 
+.account-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.account-panel p {
+  margin: 0;
+  color: rgba(248, 251, 248, 0.78);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.account-heading {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-weight: 750;
+}
+
+.account-heading strong {
+  padding: 3px 7px;
+  border-radius: 8px;
+  color: #203d33;
+  background: #f8d46b;
+  font-size: 12px;
+}
+
+.account-form,
+.account-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.account-form input {
+  min-width: 0;
+}
+
+.account-actions {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.account-actions .ghost-button {
+  min-width: 0;
+}
+
+.account-message {
+  color: #f8d46b !important;
+}
+
 .sidebar-stats {
   display: grid;
   gap: 10px;

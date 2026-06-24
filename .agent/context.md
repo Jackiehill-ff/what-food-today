@@ -10,6 +10,7 @@
 
 - 前端：React 19、TypeScript、Vite
 - 图标：lucide-react
+- 账号基础设施：Supabase Auth 客户端，可选配置 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_PUBLISHABLE_KEY`
 - 本地运行：`npm install` 后执行 `npm run dev`
 - 构建验证：`npm run build`
 - 预览：`npm run preview`
@@ -17,14 +18,21 @@
 ## 关键文件
 
 - `src/App.tsx`：页面编排、React state、事件处理和组件渲染。
+- `src/auth/supabaseClient.ts`：Supabase 浏览器客户端初始化；未配置环境变量时返回本地模式。
+- `src/auth/useAuthSession.ts`：Auth session 读取、监听、邮箱 Magic Link 登录和退出。
+- `src/data/appStateRepository.ts`：本地/云端数据访问边界；当前 App 使用本地 adapter，云端 adapter 仍为占位。
 - `src/domain/types.ts`：主要领域类型，包括 `Recipe`、`AppState`、导入、周计划、采购候选和采购清单类型。
+- `src/domain/sync.ts`：同步基础类型，包括同步状态、迁移状态、同步队列和冲突记录。
 - `src/domain/constants.ts`：固定常量和默认状态，包括 `meal-planner-app-v1`、固定餐次、分类和 `DEFAULT_STATE`。
 - `src/data/appStorage.ts`：本地数据访问层，提供 `loadAppState()` / `saveAppState(state)`，当前实现仍使用 `localStorage`。
+- `src/data/syncStorage.ts`：同步元数据本地存储，使用 `meal-planner-sync-v1`，并提供非破坏性备份 helper。
 - `src/domain/recipes.ts`：食谱默认值、食材归一化、旧食谱字段兼容迁移和食材筛选 helper。
 - `src/domain/importParser.ts`：导入中心文本解析和导入草稿创建。
 - `src/domain/mealPlan.ts`：周计划日期、餐次时间、最近一餐推断 helper。
 - `src/domain/shopping.ts`：采购候选生成、采购候选分组和正式采购清单分组 helper。
 - `src/styles.css`：主要样式。
+- `docs/supabase-schema.sql`：Supabase Postgres/RLS 表结构和 policy 草案。
+- `docs/auth-foundation-checklist.md`：账号基础设施手动验收清单。
 - `README.md`：运行和部署说明。
 - `.github/workflows/`：部署配置。除非用户明确要求，不要修改。
 
@@ -45,6 +53,16 @@ meal-planner-app-v1
 ```
 
 `src/data/appStorage.ts` 中的 `loadAppState()` 负责读取和兼容迁移旧数据，`saveAppState(state)` 负责保存当前状态。未来账号 + 云同步不能直接废弃这个本地存储键，也不能用云端数据无条件覆盖本地数据。
+
+账号基础设施新增同步元数据键：
+
+```text
+meal-planner-sync-v1
+```
+
+该键保存 `userId`、`deviceId`、`syncStatus`、`syncQueue`、`syncConflicts`、`lastPulledAt`、`lastPushedAt` 和 `migrationStatus`。它不能替代 `meal-planner-app-v1`，只用于后续同步流程的本地游标、队列和迁移状态。
+
+首次迁移或危险选择前，应先通过 `createAppStateBackup()` 将 `meal-planner-app-v1` 原文复制到 `meal-planner-app-v1-backup-<timestamp>`。当前分支不实现自动上传、自动拉取或云端覆盖本地数据。
 
 ## 主要数据模型
 

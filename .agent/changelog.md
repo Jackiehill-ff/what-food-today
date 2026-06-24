@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-24
+
+- 在 `feature/auth-foundation` 上引入 `@supabase/supabase-js`，新增 Supabase 客户端初始化、Auth session 监听、邮箱 Magic Link 登录和退出登录基础能力。
+- 未配置 `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` 时，应用继续以纯本地模式运行，不影响 `meal-planner-app-v1`。
+- 新增侧栏账号入口和同步状态展示；退出登录默认保留本地数据。
+- 新增 `meal-planner-sync-v1` 同步元数据、本地备份 helper、同步队列/冲突/迁移状态类型。
+- 新增 `src/data/appStateRepository.ts` 作为本地/云端数据访问边界；当前 App 仍使用本地 adapter，云端 adapter 不做自动同步。
+- 新增 `docs/supabase-schema.sql` 和 `docs/auth-foundation-checklist.md`，记录 Supabase 表结构、RLS policy 草案和手动验收清单。
+- 更新 README 和 `.agent/context.md`；`npm run build` 已通过。
+
 ## 2026-06-22
 
 - 拆分 `src/App.tsx` 中集中的领域类型、固定常量、本地存储读写与兼容迁移、导入解析、周计划日期/最近一餐、采购候选和采购分组 helper。
