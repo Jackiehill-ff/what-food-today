@@ -2,6 +2,10 @@
 
 ## 2026-06-22
 
+- 拆分 `src/App.tsx` 中集中的领域类型、固定常量、本地存储读写与兼容迁移、导入解析、周计划日期/最近一餐、采购候选和采购分组 helper。
+- 新增 `src/data/appStorage.ts` 作为可替换的数据访问边界，当前仍使用 `localStorage` 和原有 `meal-planner-app-v1` key。
+- 保持现有功能和 UI 行为不变，未实现账号、云同步或新数据库；`npm run build` 已通过。
+- 补充 `.agent/context.md` 中主要数据类型的新位置，以及 `Recipe` / `AppState` 核心字段的中文含义。
 - 新增 agent 交接文档体系：根目录 `AGENTS.md` 和 `.agent/` 知识库。
 - 梳理账号 + 云同步开发前的项目现状、关键决策、待办和历史变更。
 - 明确后续开发不能直接废弃或覆盖本地 `meal-planner-app-v1` 数据。

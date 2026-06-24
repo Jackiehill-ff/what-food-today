@@ -2,6 +2,8 @@
 
 ## 下一阶段：账号 + 云同步
 
+- [x] 在不改变现有功能和 UI 行为的前提下，拆分 `src/App.tsx` 的类型、常量、存储层和纯业务 helper，为后续账号、云同步、数据迁移建立架构边界。
+- [x] 在 `.agent/context.md` 说明主要数据类型的新位置，并补充 `Recipe` / `AppState` 核心字段的中文含义。
 - [ ] 确认账号方案和服务选择。
 - [ ] 设计未登录、本地使用、登录后同步之间的产品流程。
 - [ ] 定义云端数据模型，覆盖食谱、导入记录、周计划、采购清单。
@@ -15,10 +17,10 @@
 
 ## 开发约束
 
-- [ ] 修改代码前先阅读 `README.md`、`.agent/context.md`、`.agent/todo.md`。
-- [ ] 不删除数据库。
-- [ ] 不修改部署配置，除非用户明确要求。
-- [ ] 每完成任务后更新 `.agent/todo.md` 和 `.agent/changelog.md`。
+- [x] 修改代码前先阅读 `README.md`、`.agent/context.md`、`.agent/todo.md`。
+- [x] 不删除数据库。
+- [x] 不修改部署配置，除非用户明确要求。
+- [x] 每完成任务后更新 `.agent/todo.md` 和 `.agent/changelog.md`。
 
 ## 验收重点
 

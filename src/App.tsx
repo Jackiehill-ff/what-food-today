@@ -21,435 +21,35 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, DragEvent, ReactNode, SetStateAction } from "react";
 
-type Tab = "home" | "plan" | "import" | "recipes" | "shopping";
-
-type Category = "蔬菜" | "豆类" | "谷类" | "调料" | "其他";
-
-type RecipeType = "full" | "simple";
-type RecipeSection = "ingredients" | "seasonings";
-
-type Ingredient = {
-  id: string;
-  name: string;
-  category: Category;
-  amount: string;
-  unit: string;
-};
-
-type Recipe = {
-  id: string;
-  title: string;
-  type: RecipeType;
-  category: string;
-  ingredients: Ingredient[];
-  method: string;
-  rawText?: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type ImportRecord = {
-  id: string;
-  sourceType: "flomo" | "image" | "manual";
-  sourceId?: string;
-  rawText?: string;
-  importedRecipeIds: string[];
-  createdAt: string;
-};
-
-type ImportDraft = Recipe & {
-  rawText: string;
-  parseFailed: boolean;
-};
-
-type MealSlot = {
-  id: string;
-  name: string;
-};
-
-type MealPlanEntry = {
-  date: string;
-  slotId: string;
-  recipeId: string;
-};
-
-type AppState = {
-  recipes: Recipe[];
-  importRecords: ImportRecord[];
-  mealSlots: MealSlot[];
-  mealPlan: MealPlanEntry[];
-  shoppingItems: ShoppingListItem[];
-};
-
-type ShoppingCandidate = {
-  id: string;
-  date: string;
-  dayName: string;
-  dayLabel: string;
-  slotId: string;
-  slotName: string;
-  recipeId: string;
-  recipeName: string;
-  name: string;
-  amount: string;
-  unit: string;
-  category: Category;
-};
-
-type ShoppingListItem = {
-  id: string;
-  date: string;
-  name: string;
-  amount: string;
-  unit: string;
-  category: Category;
-  sourceLabel: string;
-  sourceCandidateId?: string;
-  createdAt: number;
-  checked: boolean;
-};
-
-type NextMeal = {
-  entry: MealPlanEntry;
-  dateTime: Date;
-  slotName: string;
-  recipe: Recipe;
-};
-
-const STORAGE_KEY = "meal-planner-app-v1";
-const RECIPE_ITEM_DRAG_TYPE = "application/x-recipe-item";
-
-const CATEGORIES: Category[] = ["蔬菜", "豆类", "谷类", "调料", "其他"];
-
-const DEFAULT_SLOT_TIMES: Record<string, { hour: number; minute: number }> = {
-  breakfast: { hour: 8, minute: 0 },
-  lunch: { hour: 12, minute: 0 },
-  dinner: { hour: 18, minute: 0 },
-};
-
-const FIXED_MEAL_SLOTS: MealSlot[] = [
-  { id: "breakfast", name: "早餐" },
-  { id: "lunch", name: "午餐" },
-  { id: "dinner", name: "晚餐" },
-];
-
-const DEFAULT_STATE: AppState = {
-  recipes: [],
-  importRecords: [],
-  mealSlots: FIXED_MEAL_SLOTS,
-  mealPlan: [],
-  shoppingItems: [],
-};
-
-const createId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-
-const createTimestamp = () => new Date().toISOString();
-
-const isCategory = (value: string): value is Category => CATEGORIES.includes(value as Category);
-
-const normalizeCategory = (value: unknown): Category => (typeof value === "string" && isCategory(value) ? value : "其他");
-
-const createBlankItem = (category: Category = "蔬菜"): Ingredient => ({
-  id: createId(),
-  name: "",
-  amount: "",
-  unit: "",
-  category,
-});
-
-const createBlankRecipe = (): Recipe => ({
-  id: createId(),
-  title: "",
-  type: "full",
-  category: "",
-  ingredients: [createBlankItem()],
-  method: "",
-  rawText: "",
-  createdAt: createTimestamp(),
-  updatedAt: createTimestamp(),
-});
-
-const normalizeIngredient = (item: Partial<Ingredient>): Ingredient => ({
-  id: item.id || createId(),
-  name: item.name?.trim() ?? "",
-  category: normalizeCategory(item.category),
-  amount: item.amount?.trim() ?? "",
-  unit: item.unit?.trim() ?? "",
-});
-
-const isRecipeType = (value: unknown): value is RecipeType => value === "full" || value === "simple";
-
-const migrateRecipe = (recipe: Partial<Recipe> & {
-  kind?: RecipeType;
-  name?: string;
-  seasonings?: Partial<Ingredient>[];
-  steps?: string;
-  notes?: string;
-}): Recipe => {
-  const now = createTimestamp();
-  const ingredients = [
-    ...(Array.isArray(recipe.ingredients) ? recipe.ingredients : []),
-    ...(Array.isArray(recipe.seasonings) ? recipe.seasonings : []),
-  ].map(normalizeIngredient);
-
-  return {
-    id: recipe.id || createId(),
-    title: (recipe.title ?? recipe.name ?? "").trim(),
-    type: isRecipeType(recipe.type) ? recipe.type : isRecipeType(recipe.kind) ? recipe.kind : "full",
-    category: recipe.category?.trim() ?? "",
-    ingredients,
-    method: (recipe.method ?? recipe.steps ?? "").trim(),
-    rawText: (recipe.rawText ?? recipe.notes ?? "").trim(),
-    createdAt: recipe.createdAt || now,
-    updatedAt: recipe.updatedAt || now,
-  };
-};
-
-const migrateImportRecord = (record: Partial<ImportRecord>): ImportRecord => ({
-  id: record.id || createId(),
-  sourceType: record.sourceType === "flomo" || record.sourceType === "image" || record.sourceType === "manual" ? record.sourceType : "manual",
-  sourceId: record.sourceId,
-  rawText: record.rawText,
-  importedRecipeIds: Array.isArray(record.importedRecipeIds) ? record.importedRecipeIds : [],
-  createdAt: record.createdAt || createTimestamp(),
-});
-
-const createImportDraft = (recipe: Partial<Recipe> & { rawText: string; parseFailed?: boolean }): ImportDraft => ({
-  id: createId(),
-  title: recipe.title ?? "",
-  type: "full",
-  category: "",
-  ingredients: recipe.ingredients?.length ? recipe.ingredients : [createBlankItem("其他")],
-  method: recipe.method ?? "",
-  rawText: recipe.rawText,
-  createdAt: createTimestamp(),
-  updatedAt: createTimestamp(),
-  parseFailed: Boolean(recipe.parseFailed),
-});
-
-const loadState = (): AppState => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return DEFAULT_STATE;
-    }
-    const parsed = JSON.parse(stored) as Partial<AppState>;
-    const recipes = Array.isArray(parsed.recipes) ? parsed.recipes.map(migrateRecipe).filter((recipe) => recipe.title) : [];
-    return {
-      recipes,
-      importRecords: Array.isArray(parsed.importRecords) ? parsed.importRecords.map(migrateImportRecord) : [],
-      mealSlots: FIXED_MEAL_SLOTS,
-      mealPlan: (parsed.mealPlan ?? []).filter((entry) => FIXED_MEAL_SLOTS.some((slot) => slot.id === entry.slotId)),
-      shoppingItems: parsed.shoppingItems ?? [],
-    };
-  } catch {
-    return DEFAULT_STATE;
-  }
-};
-
-const toDateKey = (date: Date) => {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const formatDateLabel = (date: Date) =>
-  `${date.getMonth() + 1}月${date.getDate()}日 ${["周日", "周一", "周二", "周三", "周四", "周五", "周六"][date.getDay()]}`;
-
-const getSlotTime = (slot: MealSlot) => {
-  if (DEFAULT_SLOT_TIMES[slot.id]) {
-    return DEFAULT_SLOT_TIMES[slot.id];
-  }
-  if (slot.name.includes("早")) {
-    return DEFAULT_SLOT_TIMES.breakfast;
-  }
-  if (slot.name.includes("午")) {
-    return DEFAULT_SLOT_TIMES.lunch;
-  }
-  if (slot.name.includes("晚")) {
-    return DEFAULT_SLOT_TIMES.dinner;
-  }
-  return { hour: 23, minute: 59 };
-};
-
-const getMealDateTime = (dateKey: string, slot: MealSlot) => {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const slotTime = getSlotTime(slot);
-  return new Date(year, month - 1, day, slotTime.hour, slotTime.minute, 0, 0);
-};
-
-const findNextMeal = (
-  mealPlan: MealPlanEntry[],
-  mealSlots: MealSlot[],
-  recipesById: Map<string, Recipe>,
-  now = new Date(),
-): NextMeal | null => {
-  const slotsById = new Map(mealSlots.map((slot) => [slot.id, slot]));
-
-  return mealPlan
-    .map((entry) => {
-      const slot = slotsById.get(entry.slotId);
-      const recipe = recipesById.get(entry.recipeId);
-      if (!slot || !recipe) {
-        return null;
-      }
-      return {
-        entry,
-        dateTime: getMealDateTime(entry.date, slot),
-        slotName: slot.name || "未命名",
-        recipe,
-      };
-    })
-    .filter((meal): meal is NextMeal => meal !== null)
-    .filter((meal) => meal.dateTime > now)
-    .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime())[0] ?? null;
-};
-
-const getWeekStart = (date: Date) => {
-  const next = new Date(date);
-  const day = next.getDay();
-  const offset = day === 0 ? -6 : 1 - day;
-  next.setDate(next.getDate() + offset);
-  next.setHours(0, 0, 0, 0);
-  return next;
-};
-
-const getWeekDays = (weekStart: Date) =>
-  Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + index);
-    return {
-      key: toDateKey(date),
-      dayName: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][index],
-      label: `${date.getMonth() + 1}/${date.getDate()}`,
-    };
-  });
-
-const getItemsForRecipe = (recipe: Recipe) => recipe.ingredients.filter((item) => item.name.trim());
-
-const getRecipeSeasonings = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category === "调料");
-
-const getRecipeFoodIngredients = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category !== "调料");
-
-const FIELD_PATTERN = /^(食材|做法)\s*[:：]/;
-
-const isValidTitleLine = (line: string) => {
-  const trimmed = line.trim();
-  return Boolean(trimmed) && !trimmed.startsWith("#") && !FIELD_PATTERN.test(trimmed);
-};
-
-const textAfterField = (line: string, field: "食材" | "做法") =>
-  line.replace(new RegExp(`^${field}\\s*[:：]\\s*`), "").trim();
-
-const parseRecipeImportText = (text: string): ImportDraft[] => {
-  const lines = text.split(/\r?\n/).map((line) => line.trim());
-  const ingredientLineIndexes = lines.reduce<number[]>((indexes, line, index) => {
-    if (/^食材\s*[:：]/.test(line)) {
-      indexes.push(index);
-    }
-    return indexes;
-  }, []);
-
-  if (!text.trim() || ingredientLineIndexes.length === 0) {
-    return [createImportDraft({ rawText: text, parseFailed: true })];
-  }
-
-  return ingredientLineIndexes.map((ingredientLineIndex, recipeIndex) => {
-    const nextIngredientLineIndex = ingredientLineIndexes[recipeIndex + 1] ?? lines.length;
-    const titleLineIndex = findPreviousIndex(lines, ingredientLineIndex - 1, isValidTitleLine);
-    const title = titleLineIndex >= 0 ? lines[titleLineIndex] : "";
-    const nextTitleLineIndex =
-      recipeIndex + 1 < ingredientLineIndexes.length
-        ? findPreviousIndex(lines, ingredientLineIndexes[recipeIndex + 1] - 1, isValidTitleLine)
-        : -1;
-    const methodLineIndex = findNextIndex(lines, ingredientLineIndex + 1, nextIngredientLineIndex, (line) =>
-      /^做法\s*[:：]/.test(line),
-    );
-    const methodEndIndex =
-      nextTitleLineIndex > methodLineIndex && methodLineIndex >= 0 ? nextTitleLineIndex : nextIngredientLineIndex;
-    const method =
-      methodLineIndex >= 0
-        ? [textAfterField(lines[methodLineIndex], "做法"), ...lines.slice(methodLineIndex + 1, methodEndIndex)]
-            .filter(Boolean)
-            .join("\n")
-        : "";
-    const ingredients = textAfterField(lines[ingredientLineIndex], "食材")
-      .split(/[、，,]/)
-      .map((name) => name.trim())
-      .filter(Boolean)
-      .map((name) => ({
-        ...createBlankItem("其他"),
-        name,
-        amount: "",
-        unit: "",
-      }));
-    const rawStartIndex = titleLineIndex >= 0 ? titleLineIndex : ingredientLineIndex;
-    const rawEndIndex = methodEndIndex > rawStartIndex ? methodEndIndex : nextIngredientLineIndex;
-
-    return createImportDraft({
-      title,
-      ingredients,
-      method,
-      rawText: lines.slice(rawStartIndex, rawEndIndex).join("\n"),
-      parseFailed: !title || !method,
-    });
-  });
-};
-
-const findPreviousIndex = (lines: string[], startIndex: number, predicate: (line: string) => boolean) => {
-  for (let index = startIndex; index >= 0; index -= 1) {
-    if (predicate(lines[index])) {
-      return index;
-    }
-  }
-  return -1;
-};
-
-const findNextIndex = (
-  lines: string[],
-  startIndex: number,
-  endIndex: number,
-  predicate: (line: string) => boolean,
-) => {
-  for (let index = startIndex; index < endIndex; index += 1) {
-    if (predicate(lines[index])) {
-      return index;
-    }
-  }
-  return -1;
-};
-
-const compareShoppingItems = (a: ShoppingListItem, b: ShoppingListItem) => {
-  if (!a.date && b.date) {
-    return 1;
-  }
-  if (a.date && !b.date) {
-    return -1;
-  }
-  return a.date.localeCompare(b.date) || a.createdAt - b.createdAt;
-};
-
-const groupShoppingItems = (items: ShoppingListItem[]) => {
-  const groups: { key: string; label: string; items: ShoppingListItem[] }[] = [];
-  [...items].sort(compareShoppingItems).forEach((item) => {
-    const key = item.date || "unspecified";
-    const existing = groups.find((group) => group.key === key);
-    if (existing) {
-      existing.items.push(item);
-      return;
-    }
-    groups.push({
-      key,
-      label: item.date || "未指定",
-      items: [item],
-    });
-  });
-  return groups;
-};
+import { loadAppState, saveAppState } from "./data/appStorage";
+import { CATEGORIES, FIXED_MEAL_SLOTS, RECIPE_ITEM_DRAG_TYPE } from "./domain/constants";
+import { createId, createTimestamp } from "./domain/ids";
+import { parseRecipeImportText } from "./domain/importParser";
+import { findNextMeal, formatDateLabel, getWeekDays, getWeekStart, shiftWeek } from "./domain/mealPlan";
+import {
+  createBlankItem,
+  createBlankRecipe,
+  getItemsForRecipe,
+  getRecipeFoodIngredients,
+  getRecipeSeasonings,
+} from "./domain/recipes";
+import { buildShoppingCandidates, groupShoppingCandidates, groupShoppingItems } from "./domain/shopping";
+import type {
+  AppState,
+  Category,
+  ImportDraft,
+  Ingredient,
+  MealSlot,
+  NextMeal,
+  Recipe,
+  RecipeSection,
+  ShoppingCandidate,
+  ShoppingListItem,
+  Tab,
+} from "./domain/types";
 
 function App() {
-  const [appState, setAppState] = useState<AppState>(() => loadState());
+  const [appState, setAppState] = useState<AppState>(() => loadAppState());
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [recipeDraft, setRecipeDraft] = useState<Recipe>(() => createBlankRecipe());
@@ -470,7 +70,7 @@ function App() {
   const [importStatus, setImportStatus] = useState("");
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+    saveAppState(appState);
   }, [appState]);
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
@@ -507,32 +107,7 @@ function App() {
   }, [appState.recipes, recipeCategory, recipeSearch]);
 
   const shoppingCandidates = useMemo(() => {
-    return weekDays.flatMap((day) =>
-      FIXED_MEAL_SLOTS.flatMap((slot) => {
-        return appState.mealPlan
-          .filter((entry) => entry.date === day.key && entry.slotId === slot.id)
-          .flatMap((entry) => {
-            const recipe = recipesById.get(entry.recipeId);
-            if (!recipe) {
-              return [];
-            }
-            return getItemsForRecipe(recipe).map((sourceItem) => ({
-              id: `${day.key}|${slot.id}|${recipe.id}|${sourceItem.id}`,
-              date: day.key,
-              dayName: day.dayName,
-              dayLabel: day.label,
-              slotId: slot.id,
-              slotName: slot.name || "未命名",
-              recipeId: recipe.id,
-              recipeName: recipe.title,
-              name: sourceItem.name.trim(),
-              amount: sourceItem.amount.trim(),
-              unit: sourceItem.unit.trim(),
-              category: sourceItem.category,
-            }));
-          });
-      }),
-    );
+    return buildShoppingCandidates(weekDays, appState.mealPlan, recipesById);
   }, [appState.mealPlan, recipesById, weekDays]);
 
   const addedCandidateIds = useMemo(
@@ -1103,12 +678,6 @@ function App() {
   );
 }
 
-const shiftWeek = (weekStart: Date, offset: number) => {
-  const next = new Date(weekStart);
-  next.setDate(next.getDate() + offset * 7);
-  return next;
-};
-
 function SectionHeader({
   icon,
   title,
@@ -1564,20 +1133,7 @@ function ShoppingCandidatePanel({
   toggleCandidate: (id: string) => void;
   addSelectedCandidates: () => void;
 }) {
-  const groups = candidates.reduce<{ key: string; label: string; items: ShoppingCandidate[] }[]>((result, candidate) => {
-    const key = `${candidate.date}|${candidate.slotId}|${candidate.recipeId}`;
-    const existing = result.find((group) => group.key === key);
-    if (existing) {
-      existing.items.push(candidate);
-      return result;
-    }
-    result.push({
-      key,
-      label: `${candidate.dayName} ${candidate.dayLabel} · ${candidate.slotName} · ${candidate.recipeName}`,
-      items: [candidate],
-    });
-    return result;
-  }, []);
+  const groups = groupShoppingCandidates(candidates);
 
   return (
     <section className="shopping-panel">
