@@ -21,15 +21,15 @@
 - `src/auth/supabaseClient.ts`：Supabase 浏览器客户端初始化；未配置环境变量时返回本地模式。
 - `src/auth/useAuthSession.ts`：Auth session 读取、监听、邮箱 Magic Link 登录和退出。
 - `src/data/appStateRepository.ts`：本地/云端数据访问边界；当前 App 使用本地 adapter，云端 adapter 仍为占位。
-- `src/domain/types.ts`：主要领域类型，包括 `Recipe`、`AppState`、导入、周计划、采购候选和采购清单类型。
+- `src/domain/types.ts`：主要领域类型，包括 `Recipe`、`AppState`、导入、菜单计划和采购清单类型。
 - `src/domain/sync.ts`：同步基础类型，包括同步状态、迁移状态、同步队列和冲突记录。
-- `src/domain/constants.ts`：固定常量和默认状态，包括 `meal-planner-app-v1`、固定餐次、分类和 `DEFAULT_STATE`。
+- `src/domain/constants.ts`：固定常量和默认状态，包括 `meal-planner-app-v1`、分类和 `DEFAULT_STATE`。
 - `src/data/appStorage.ts`：本地数据访问层，提供 `loadAppState()` / `saveAppState(state)`，当前实现仍使用 `localStorage`。
 - `src/data/syncStorage.ts`：同步元数据本地存储，使用 `meal-planner-sync-v1`，并提供非破坏性备份 helper。
 - `src/domain/recipes.ts`：食谱默认值、食材归一化、旧食谱字段兼容迁移和食材筛选 helper。
 - `src/domain/importParser.ts`：导入中心文本解析和导入草稿创建。
-- `src/domain/mealPlan.ts`：周计划日期、餐次时间、最近一餐推断 helper。
-- `src/domain/shopping.ts`：采购候选生成、采购候选分组和正式采购清单分组 helper。
+- `src/domain/mealPlan.ts`：单日菜单日期、日期切换、当天菜单读取 helper。
+- `src/domain/shopping.ts`：统一采购清单排序 helper。
 - `src/styles.css`：主要样式。
 - `docs/supabase-schema.sql`：Supabase Postgres/RLS 表结构和 policy 草案。
 - `docs/auth-foundation-checklist.md`：账号基础设施手动验收清单。
@@ -38,11 +38,11 @@
 
 ## 当前功能
 
-- 首页：自动展示未来最近一餐，跳过当前时间之前的餐次。
-- 周计划：按早餐、午餐、晚餐安排食谱。
+- 首页：展示"今天的菜单"，按添加顺序列出当天已安排食谱（含食材和做法），空态引导去菜单计划安排。
+- 菜单计划：单日视图，默认聚焦今天，可切前一天/后一天；一天一个列表，菜按添加顺序排列；搜索食谱（候选最多 8 个）添加，选完立即弹出食材勾选弹窗，勾选缺少的食材直接加入采购清单。
 - 导入中心：从 flomo 或其他文本来源粘贴食谱文本，解析成一个或多个草稿，预览编辑后保存到食谱库。
 - 食谱库：新增、编辑、删除、搜索食谱。
-- 采购清单：从周计划生成候选食材，用户手动勾选后加入正式采购清单；也支持手动添加采购项。
+- 采购清单：统一的正式采购清单（不按日期分类，按分类排序），来自弹窗勾选和手动添加；支持复制清单文本。
 
 ## 当前本地数据
 
@@ -72,9 +72,8 @@ meal-planner-sync-v1
 
 - `recipes`：食谱库，保存用户手动新增、编辑或从导入中心保存的食谱。
 - `importRecords`：导入记录预留数据，用于记录导入来源、原文和导入出的食谱 id。
-- `mealSlots`：固定餐次，目前为早餐、午餐、晚餐；读取旧数据时仍强制使用固定餐次。
-- `mealPlan`：周计划条目，按日期、餐次和食谱 id 建立安排关系。
-- `shoppingItems`：正式采购清单，只保存用户从候选食材手动加入或手动创建的采购项。
+- `mealPlan`：菜单计划条目，按日期和食谱 id 建立安排关系；同一天内顺序即菜单顺序（新增追加在末尾）。旧数据中的餐次 `slotId` 在迁移时去掉，并按 早餐→午餐→晚餐 顺序重排。
+- `shoppingItems`：正式采购清单，保存用户从弹窗勾选加入或手动创建的采购项；`date` 字段仅作旧数据兼容保留，展示上不再按日期分类。
 
 当前 `Recipe` 核心字段包括：
 

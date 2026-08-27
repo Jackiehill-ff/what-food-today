@@ -2,3 +2,13 @@ node_modules
 dist
 .DS_Store
 *.local
+
+# Capacitor / Android 构建产物（android/ 源码保留，构建输出忽略）
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+
+# APK 构建产物
+*.apk

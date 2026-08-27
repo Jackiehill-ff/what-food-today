@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-06-24（移动端布局修复）
+
+- Review 修复：`docs/supabase-schema.sql` 的菜单计划表移除旧 `slot_id`，增加 `position` 表达同一天菜单顺序；同步 `.agent/context.md` 旧餐次/采购候选描述。
+- 手机端（≤980px）隐藏侧栏，新增底部 Tab 导航：首页 / 菜单 / 导入 / 食谱 / 采购 / 我的；`Tab` 类型新增 `"me"`。
+- 新增"我的"页：复用侧栏深色卡片样式展示品牌、账号面板、数据面板。
+- 内容区底部加安全区内边距（`env(safe-area-inset-bottom)`），避免被底部导航遮挡。
+- APK 已重新打包：`what-food-today.apk`。
+
+## 2026-06-24（APK 打包完成）
+
+- Gradle `assembleDebug` 构建成功，产出 `android/app/build/outputs/apk/debug/app-debug.apk`（根目录副本 `what-food-today.apk`，4.2MB，debug 签名）。
+- 打包要点：Gradle 需以 JDK 21 运行（Capacitor 8 插件要求 Java 21 编译），`gradle.properties` 配置 `org.gradle.java.installations.paths` 指向两个 JDK；Gradle 发行版改用腾讯镜像，Maven 依赖加阿里云镜像。
+- `.gitignore` 增加 Capacitor/Android 构建产物与 `*.apk` 忽略规则。
+- 待用户手机安装验证；正式版需 release 签名。
+
+## 2026-06-24（导出/导入 + Capacitor 封装进行中）
+
+- 新增侧栏"数据"面板：导出 JSON 备份 / 从备份文件导入（替换式，带确认）；浏览器端用下载，App 端（Capacitor）用 Filesystem + Share 保存/分享文件。
+- 抽取 `migrateAppState(parsed)` 复用迁移逻辑（`appStorage.ts`），导入文件时同样经过兼容迁移。
+- 安装打包环境：JDK 17（Homebrew）、Android SDK（cmdline-tools + platform-tools + android-35 + build-tools 35.0.0）、`@capacitor/core|cli|android|filesystem|share`。
+- `npx cap init`（appId `com.jackiehill.whatfoodtoday`，webDir `dist`）、`cap add android`、`cap sync android` 完成。
+- 因网络无法访问 services.gradle.org，Gradle 发行版改用腾讯镜像，Maven 依赖加阿里云镜像（`android/build.gradle`、`gradle-wrapper.properties`）。
+
+## 2026-06-24（菜单计划改版实现）
+
+- 数据模型：`MealPlanEntry` 移除 `slotId`；`AppState.mealSlots`、`MealSlot`、`NextMeal`、`ShoppingCandidate*`、`WeekDay`、`ShoppingGroup` 等类型删除；`ShoppingListItem.date` 保留字段但不再用于分组。
+- 迁移：`appStorage.loadAppState` 将旧 mealPlan 去 `slotId` 并按 早餐→午餐→晚餐 顺序重排为数组顺序；食谱旧字段迁移不变。
+- 领域层：删除餐次推断与周视图 helper（`getSlotTime`/`getMealDateTime`/`findNextMeal`/`getWeekStart`/`getWeekDays`/`shiftWeek`）和采购候选生成/分组；新增 `getTodayKey`/`shiftDay`/`formatDayHeader`/`getPlannedRecipesForDate` 与统一清单排序 `sortShoppingItems`（分类→未勾选优先→时间）。
+- UI：菜单计划页改为单日视图（默认今天，前一天/后一天/回到今天），一天一个列表按顺序排列；搜索候选最多 8 个；选完食谱立即弹出食材勾选弹窗（默认不勾选、支持全选），勾选缺少的食材直接加入统一采购清单；采购清单页移除候选面板与手动添加的日期选择，改为单一清单；首页改为"今天的菜单"。
+- 验证：`npm run build` 通过；临时冒烟测试覆盖 旧数据迁移 / 日视图 helper（含跨月跨年）/ 统一清单排序，全部通过；新增 `docs/daily-menu-checklist.md` 手动验收清单。
+
+## 2026-06-24（菜单计划改版方案确认，未改代码）
+
+- 确认改版方案：取消周视图与餐次划分，计划页改单日视图（默认今天，可切前一天/后一天）；搜索候选最多 8 个；选完食谱立即弹窗勾选缺少食材加入清单；正式采购清单不再按天分组，只保留统一清单；首页改为"今天的菜单"。
+- 数据模型决策：`MealPlanEntry` 去 `slotId`，同一天按数组顺序排列；`mealSlots`/`shoppingItems.date` 保留字段仅作旧数据兼容；旧 mealPlan 迁移时按 早餐→午餐→晚餐 顺序重排。
+- 移除采购候选面板（弹窗统一入口）与手动添加的日期选择；暂不封装 APP。
+
+## 2026-06-24（功能核对）
+
+- 对照用户五项需求核对现有实现（未改代码）：①食谱标准模板+编辑已实现，"上传"仅文本粘贴；②周计划搜索选择食谱已实现；③采购候选勾选加入已实现，但无选菜后立即弹窗；④数据层按天，周视图无"当天"专属视图；⑤App 封装/安卓上传未实现，需 PWA 或 Capacitor。
+- `npm run build` 通过。
+
 ## 2026-06-24
 
 - 在 `feature/auth-foundation` 上引入 `@supabase/supabase-js`，新增 Supabase 客户端初始化、Auth session 监听、邮箱 Magic Link 登录和退出登录基础能力。

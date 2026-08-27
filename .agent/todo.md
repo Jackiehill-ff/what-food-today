@@ -1,5 +1,38 @@
 # Todo
 
+## 当前阶段：封装安卓 APK（Capacitor）
+
+- [x] 新增导出/导入 JSON 数据功能（侧栏"数据"面板；App 内导出用 Filesystem+Share，浏览器用下载）。
+- [x] 安装 JDK 17 + JDK 21（Homebrew）、Android SDK（cmdline-tools + platform-tools + android-35 + build-tools 35.0.0）。
+- [x] 安装 `@capacitor/core|cli|android|filesystem|share`，`cap init` / `cap add android` / `cap sync` 完成。
+- [x] Gradle 构建通过（JDK 21 运行 Gradle；Gradle 发行版走腾讯镜像、Maven 依赖走阿里云镜像）。
+- [x] APK 产物：`android/app/build/outputs/apk/debug/app-debug.apk`，根目录副本 `what-food-today.apk`（debug 签名）。
+- [x] `.gitignore` 忽略 android 构建产物与 APK。
+- [x] 移动端布局：≤980px 隐藏侧栏，改为底部 Tab 导航（首页/菜单/导入/食谱/采购/我的），"我的"页收纳账号与数据面板；内容区加底部安全区内边距。APK 已重新打包。
+- [ ] 用户在手机上安装验证新布局；如需正式版再打 release（需签名 keystore）。
+
+## 当前阶段：菜单计划改版（日视图 + 弹窗勾选 + 统一清单）
+
+- [x] 数据模型：`MealPlanEntry` 移除 `slotId`，同一天按数组顺序排列（新增靠后）；`AppState.mealSlots` 移除；`ShoppingListItem.date` 保留字段但不再用于分组。
+- [x] 迁移：`appStorage.loadAppState` 迁移旧 mealPlan（去 slotId，旧数据按 早餐→午餐→晚餐 顺序重排为数组顺序）。
+- [x] 删除：`FIXED_MEAL_SLOTS`、`DEFAULT_SLOT_TIMES`、`getSlotTime`、`getMealDateTime`、`findNextMeal`、`NextMeal`、周视图 helper（`getWeekStart`/`getWeekDays`/`shiftWeek`/`WeekDay`）、采购候选（`buildShoppingCandidates`/`groupShoppingCandidates`/`ShoppingCandidate*`）。
+- [x] 新增日视图 helper：`getTodayKey`、`shiftDay(dateKey, offset)`、`getPlannedRecipesForDate(mealPlan, date)`（按数组顺序）、`formatDayHeader`。
+- [x] 计划页改日视图：默认今天，前一天/后一天/回到今天；一天一个列表，菜按顺序排列；搜索候选最多 8 个（`.slice(0, 8)`）。
+- [x] 弹窗勾选：选完食谱立即弹窗，列出该食谱食材，勾选缺少的 → "加入已选"写入统一采购清单（sourceLabel=食谱名），支持全选。
+- [x] 采购清单：移除候选面板；移除手动添加的日期选择；正式清单统一展示（不按天分组，按分类排序），"复制整周"改"复制清单"。
+- [x] 首页：改为"今天的菜单"（当天已安排食谱按顺序展示 + 去安排入口）。
+- [x] 清理 dead code 与文案；`npm run build` 通过；冒烟测试（迁移/日视图/清单排序）通过。
+- [x] Review 后同步 Supabase schema 草案和 `.agent/context.md`，移除旧餐次/采购候选描述，云端菜单草案改为 `date` + `recipe_id` + `position`。
+- [ ] 浏览器手动验收（见 `docs/daily-menu-checklist.md`）。
+
+## 功能核对（2026-06-24 检查，未改代码）
+
+- [x] ① 食谱上传/编辑：标准模板已实现（名称/分类/食材/调味料/做法/备注）；"上传"仅文本粘贴，无文件/图片上传。
+- [x] ② 菜单计划：周计划网格按"天×餐次"搜索选择食谱（多选），已实现。
+- [x] ③ 备菜清单：候选生成+勾选加入已实现；但无"选完食谱立即弹窗"交互，需去采购清单 tab 手动勾选。
+- [x] ④ 以天为单位：数据层已按天（mealPlan/shoppingItems 均带 date，采购清单按天分组）；无"当天"专属视图，整体为周视图。
+- [x] ⑤ App 封装 + 安卓：未实现（无 Capacitor/PWA/APK 构建，仅有 GitHub Pages 网页版）。
+
 ## 下一阶段：账号 + 云同步
 
 - [x] 在不改变现有功能和 UI 行为的前提下，拆分 `src/App.tsx` 的类型、常量、存储层和纯业务 helper，为后续账号、云同步、数据迁移建立架构边界。

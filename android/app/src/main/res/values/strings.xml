@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">今天吃啥</string>
+    <string name="title_activity_main">今天吃啥</string>
+    <string name="package_name">com.jackiehill.whatfoodtoday</string>
+    <string name="custom_url_scheme">com.jackiehill.whatfoodtoday</string>
+</resources>

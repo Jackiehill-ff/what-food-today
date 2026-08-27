@@ -1,5 +1,7 @@
-import { loadAppState, saveAppState } from "./appStorage";
+import { loadAppState, migrateAppState, saveAppState } from "./appStorage";
 import type { AppState } from "../domain/types";
+
+export { migrateAppState };
 
 export type AppStateRepository = {
   load: () => AppState;

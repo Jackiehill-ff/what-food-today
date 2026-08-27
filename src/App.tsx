@@ -4,6 +4,7 @@ import {
   Check,
   ClipboardList,
   Copy,
+  Download,
   Edit3,
   FileInput,
   GripVertical,
@@ -17,20 +18,21 @@ import {
   ShoppingBasket,
   Soup,
   Trash2,
+  Upload,
   UserRound,
   Utensils,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, DragEvent, FormEvent, ReactNode, SetStateAction } from "react";
 
 import { useAuthSession } from "./auth/useAuthSession";
-import { localAppStateRepository } from "./data/appStateRepository";
+import { localAppStateRepository, migrateAppState } from "./data/appStateRepository";
 import { createAppStateBackup, loadSyncMetadata, saveSyncMetadata } from "./data/syncStorage";
-import { CATEGORIES, FIXED_MEAL_SLOTS, RECIPE_ITEM_DRAG_TYPE } from "./domain/constants";
+import { CATEGORIES, RECIPE_ITEM_DRAG_TYPE } from "./domain/constants";
 import { createId, createTimestamp } from "./domain/ids";
 import { parseRecipeImportText } from "./domain/importParser";
-import { findNextMeal, formatDateLabel, getWeekDays, getWeekStart, shiftWeek } from "./domain/mealPlan";
+import { formatDayHeader, getPlannedRecipesForDate, getTodayKey, shiftDay } from "./domain/mealPlan";
 import {
   createBlankItem,
   createBlankRecipe,
@@ -38,18 +40,14 @@ import {
   getRecipeFoodIngredients,
   getRecipeSeasonings,
 } from "./domain/recipes";
-import { buildShoppingCandidates, groupShoppingCandidates, groupShoppingItems } from "./domain/shopping";
+import { sortShoppingItems } from "./domain/shopping";
 import type {
   AppState,
   Category,
   ImportDraft,
   Ingredient,
-  MealSlot,
-  NextMeal,
   Recipe,
   RecipeSection,
-  ShoppingCandidate,
-  ShoppingListItem,
   Tab,
 } from "./domain/types";
 import type { SyncStatus } from "./domain/sync";
@@ -59,26 +57,27 @@ function App() {
   const [appState, setAppState] = useState<AppState>(() => localAppStateRepository.load());
   const [syncMetadata, setSyncMetadata] = useState(() => loadSyncMetadata());
   const [activeTab, setActiveTab] = useState<Tab>("home");
-  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  const [planDate, setPlanDate] = useState(() => getTodayKey());
   const [recipeDraft, setRecipeDraft] = useState<Recipe>(() => createBlankRecipe());
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeCategory, setRecipeCategory] = useState("");
-  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Record<string, boolean>>({});
   const [manualItem, setManualItem] = useState({
-    date: "",
     name: "",
     amount: "",
     unit: "",
     category: "蔬菜" as Category,
   });
-  const [copyStatus, setCopyStatus] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [importText, setImportText] = useState("");
   const [importDrafts, setImportDrafts] = useState<ImportDraft[]>([]);
   const [importStatus, setImportStatus] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
   const [backupStatus, setBackupStatus] = useState("");
+  const [dataStatus, setDataStatus] = useState("");
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [planSearch, setPlanSearch] = useState("");
+  const [popup, setPopup] = useState<{ recipe: Recipe; selected: Record<string, boolean> } | null>(null);
 
   useEffect(() => {
     localAppStateRepository.save(appState);
@@ -107,8 +106,6 @@ function App() {
       return next;
     });
   }, [auth.session?.user.id]);
-
-  const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
 
   const recipesById = useMemo(() => {
     return new Map(appState.recipes.map((recipe) => [recipe.id, recipe]));
@@ -141,24 +138,34 @@ function App() {
     });
   }, [appState.recipes, recipeCategory, recipeSearch]);
 
-  const shoppingCandidates = useMemo(() => {
-    return buildShoppingCandidates(weekDays, appState.mealPlan, recipesById);
-  }, [appState.mealPlan, recipesById, weekDays]);
-
-  const addedCandidateIds = useMemo(
-    () => new Set(appState.shoppingItems.flatMap((item) => (item.sourceCandidateId ? [item.sourceCandidateId] : []))),
-    [appState.shoppingItems],
+  const plannedRecipes = useMemo(
+    () => getPlannedRecipesForDate(appState.mealPlan, planDate, recipesById),
+    [appState.mealPlan, planDate, recipesById],
   );
 
-  const shoppingGroups = useMemo(() => groupShoppingItems(appState.shoppingItems), [appState.shoppingItems]);
-
-  const nextMeal = useMemo(
-    () => findNextMeal(appState.mealPlan, FIXED_MEAL_SLOTS, recipesById),
+  const todayRecipes = useMemo(
+    () => getPlannedRecipesForDate(appState.mealPlan, getTodayKey(), recipesById),
     [appState.mealPlan, recipesById],
   );
 
-  const selectedCount = appState.mealPlan.filter((entry) => weekDays.some((day) => day.key === entry.date)).length;
-  const selectedCandidateCount = shoppingCandidates.filter((candidate) => selectedCandidateIds[candidate.id] && !addedCandidateIds.has(candidate.id)).length;
+  const sortedShoppingItems = useMemo(() => sortShoppingItems(appState.shoppingItems), [appState.shoppingItems]);
+
+  const plannedRecipeIds = useMemo(() => new Set(plannedRecipes.map((recipe) => recipe.id)), [plannedRecipes]);
+
+  const planSearchResults = useMemo(() => {
+    const keyword = planSearch.trim().toLowerCase();
+    if (!keyword) {
+      return [];
+    }
+    return appState.recipes
+      .filter((recipe) => !plannedRecipeIds.has(recipe.id))
+      .filter((recipe) =>
+        [recipe.title, recipe.category, recipe.method, recipe.rawText].join(" ").toLowerCase().includes(keyword),
+      )
+      .slice(0, 8);
+  }, [planSearch, appState.recipes, plannedRecipeIds]);
+
+  const plannedCount = appState.mealPlan.length;
   const shoppingCount = appState.shoppingItems.length;
 
   const updateState = (updater: (state: AppState) => AppState) => {
@@ -330,41 +337,58 @@ function App() {
     }));
   };
 
-  const togglePlanRecipe = (date: string, slotId: string, recipeId: string) => {
+  const addRecipeToDate = (recipe: Recipe) => {
     updateState((state) => {
-      const exists = state.mealPlan.some(
-        (entry) => entry.date === date && entry.slotId === slotId && entry.recipeId === recipeId,
-      );
+      const exists = state.mealPlan.some((entry) => entry.date === planDate && entry.recipeId === recipe.id);
       if (exists) {
-        return {
-          ...state,
-          mealPlan: state.mealPlan.filter(
-            (entry) => !(entry.date === date && entry.slotId === slotId && entry.recipeId === recipeId),
-          ),
-        };
+        return state;
       }
       return {
         ...state,
-        mealPlan: [...state.mealPlan, { date, slotId, recipeId }],
+        mealPlan: [...state.mealPlan, { date: planDate, recipeId: recipe.id }],
       };
     });
+    setPlanSearch("");
+    setPopup({ recipe, selected: {} });
   };
 
-  const getPlannedRecipeIds = (date: string, slotId: string) =>
-    appState.mealPlan
-      .filter((entry) => entry.date === date && entry.slotId === slotId)
-      .map((entry) => entry.recipeId);
-
-  const toggleCandidate = (id: string) => {
-    setSelectedCandidateIds((current) => ({
-      ...current,
-      [id]: !current[id],
+  const removeRecipeFromDate = (recipeId: string) => {
+    updateState((state) => ({
+      ...state,
+      mealPlan: state.mealPlan.filter((entry) => !(entry.date === planDate && entry.recipeId === recipeId)),
     }));
   };
 
-  const addSelectedCandidates = () => {
-    const candidatesToAdd = shoppingCandidates.filter((candidate) => selectedCandidateIds[candidate.id] && !addedCandidateIds.has(candidate.id));
-    if (!candidatesToAdd.length) {
+  const togglePopupItem = (itemId: string) => {
+    setPopup((current) =>
+      current ? { ...current, selected: { ...current.selected, [itemId]: !current.selected[itemId] } } : current,
+    );
+  };
+
+  const togglePopupAll = () => {
+    setPopup((current) => {
+      if (!current) {
+        return current;
+      }
+      const items = getItemsForRecipe(current.recipe);
+      const allSelected = items.length > 0 && items.every((item) => current.selected[item.id]);
+      if (allSelected) {
+        return { ...current, selected: {} };
+      }
+      const next: Record<string, boolean> = {};
+      items.forEach((item) => {
+        next[item.id] = true;
+      });
+      return { ...current, selected: next };
+    });
+  };
+
+  const addPopupItems = () => {
+    if (!popup) {
+      return;
+    }
+    const items = getItemsForRecipe(popup.recipe).filter((item) => popup.selected[item.id]);
+    if (!items.length) {
       return;
     }
     const now = Date.now();
@@ -372,27 +396,29 @@ function App() {
       ...state,
       shoppingItems: [
         ...state.shoppingItems,
-        ...candidatesToAdd.map((candidate, index) => ({
+        ...items.map((item, index) => ({
           id: createId(),
-          date: candidate.date,
-          name: candidate.name,
-          amount: candidate.amount,
-          unit: candidate.unit,
-          category: candidate.category,
-          sourceLabel: `${candidate.dayName} ${candidate.slotName} · ${candidate.recipeName}`,
-          sourceCandidateId: candidate.id,
+          date: "",
+          name: item.name,
+          amount: item.amount,
+          unit: item.unit,
+          category: item.category,
+          sourceLabel: popup.recipe.title,
           createdAt: now + index,
           checked: false,
         })),
       ],
     }));
-    setSelectedCandidateIds((current) => {
-      const next = { ...current };
-      candidatesToAdd.forEach((candidate) => {
-        delete next[candidate.id];
-      });
-      return next;
-    });
+    setStatusMessage(`已加入 ${items.length} 项到采购清单`);
+    window.setTimeout(() => setStatusMessage(""), 2200);
+    setPopup(null);
+  };
+
+  const toggleShoppingItem = (id: string) => {
+    updateState((state) => ({
+      ...state,
+      shoppingItems: state.shoppingItems.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)),
+    }));
   };
 
   const addManualShoppingItem = () => {
@@ -406,7 +432,7 @@ function App() {
         ...state.shoppingItems,
         {
           id: createId(),
-          date: manualItem.date,
+          date: "",
           name,
           amount: manualItem.amount.trim(),
           unit: manualItem.unit.trim(),
@@ -425,24 +451,12 @@ function App() {
     }));
   };
 
-  const toggleShoppingItem = (id: string) => {
-    updateState((state) => ({
-      ...state,
-      shoppingItems: state.shoppingItems.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)),
-    }));
-  };
-
   const buildShoppingText = () => {
-    return shoppingGroups
-      .map((day) => {
-        const lines = day.items.map((item) => {
-          const amount = [item.amount, item.unit].filter(Boolean).join("");
-          return `- ${item.checked ? "[x]" : "[ ]"} ${item.name}${amount ? ` ${amount}` : ""} (${item.category})`;
-        });
-        return `${day.label}\n${lines.join("\n")}`;
-      })
-      .filter(Boolean)
-      .join("\n\n");
+    const lines = sortedShoppingItems.map((item) => {
+      const amount = [item.amount, item.unit].filter(Boolean).join("");
+      return `- ${item.checked ? "[x]" : "[ ]"} ${item.name}${amount ? ` ${amount}` : ""} (${item.category})`;
+    });
+    return lines.join("\n");
   };
 
   const copyShoppingText = async () => {
@@ -451,8 +465,8 @@ function App() {
       return;
     }
     await navigator.clipboard.writeText(text);
-    setCopyStatus("已复制采购清单");
-    window.setTimeout(() => setCopyStatus(""), 1800);
+    setStatusMessage("已复制采购清单");
+    window.setTimeout(() => setStatusMessage(""), 1800);
   };
 
   const createLocalBackup = () => {
@@ -470,6 +484,63 @@ function App() {
     setBackupStatus("已创建本地备份");
   };
 
+  const openPlanForToday = () => {
+    setPlanDate(getTodayKey());
+    setActiveTab("plan");
+  };
+
+  const exportData = async () => {
+    const json = JSON.stringify(appState, null, 2);
+    const fileName = `what-food-today-${getTodayKey()}.json`;
+    const isNative = Boolean((window as { Capacitor?: unknown }).Capacitor);
+    if (isNative) {
+      try {
+        const { Filesystem, Directory, Encoding } = await import("@capacitor/filesystem");
+        const { Share } = await import("@capacitor/share");
+        const result = await Filesystem.writeFile({
+          path: fileName,
+          data: json,
+          directory: Directory.Documents,
+          encoding: Encoding.UTF8,
+        });
+        await Share.share({ title: "今天吃啥 数据备份", url: result.uri, dialogTitle: "保存或分享数据备份" });
+        setDataStatus("已生成数据备份文件");
+      } catch {
+        setDataStatus("导出失败，请重试");
+      }
+    } else {
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      setDataStatus("已导出数据文件");
+    }
+    window.setTimeout(() => setDataStatus(""), 2600);
+  };
+
+  const importData = async (file: File) => {
+    try {
+      const text = await file.text();
+      const migrated = migrateAppState(JSON.parse(text) as Partial<AppState>);
+      if (!migrated.recipes.length && !migrated.mealPlan.length && !migrated.shoppingItems.length) {
+        setDataStatus("导入失败：文件里没有有效数据");
+        return;
+      }
+      if (!window.confirm("导入将替换当前全部数据（食谱、菜单计划、采购清单），确定继续？")) {
+        return;
+      }
+      setAppState(migrated);
+      setDataStatus(`已导入 ${migrated.recipes.length} 个食谱`);
+      window.setTimeout(() => setDataStatus(""), 2600);
+    } catch {
+      setDataStatus("导入失败：文件格式不正确");
+      window.setTimeout(() => setDataStatus(""), 2600);
+    }
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -479,31 +550,12 @@ function App() {
           </div>
           <div>
             <h1>今天吃啥？</h1>
-            <p>周计划和采购清单</p>
+            <p>菜单计划和采购清单</p>
           </div>
         </div>
 
         <nav className="nav-tabs" aria-label="主导航">
-          <button className={activeTab === "home" ? "active" : ""} onClick={() => setActiveTab("home")}>
-            <Home size={18} />
-            首页
-          </button>
-          <button className={activeTab === "plan" ? "active" : ""} onClick={() => setActiveTab("plan")}>
-            <CalendarDays size={18} />
-            周计划
-          </button>
-          <button className={activeTab === "import" ? "active" : ""} onClick={() => setActiveTab("import")}>
-            <FileInput size={18} />
-            导入中心
-          </button>
-          <button className={activeTab === "recipes" ? "active" : ""} onClick={() => setActiveTab("recipes")}>
-            <Utensils size={18} />
-            食谱库
-          </button>
-          <button className={activeTab === "shopping" ? "active" : ""} onClick={() => setActiveTab("shopping")}>
-            <ShoppingBasket size={18} />
-            采购清单
-          </button>
+          <NavTabs activeTab={activeTab} onChange={setActiveTab} />
         </nav>
 
         <AccountPanel
@@ -515,14 +567,20 @@ function App() {
           createLocalBackup={createLocalBackup}
         />
 
+        <DataPanel
+          dataStatus={dataStatus}
+          onExport={exportData}
+          onImport={importData}
+        />
+
         <div className="sidebar-stats">
           <div>
             <strong>{appState.recipes.length}</strong>
             <span>食谱</span>
           </div>
           <div>
-            <strong>{selectedCount}</strong>
-            <span>本周安排</span>
+            <strong>{plannedCount}</strong>
+            <span>已安排</span>
           </div>
           <div>
             <strong>{shoppingCount}</strong>
@@ -534,12 +592,12 @@ function App() {
       <main className="main-content">
         {activeTab === "home" && (
           <section className="workspace home-workspace">
-            <SectionHeader icon={<Home size={22} />} title="最近一餐" />
-            <NextMealCard
-              nextMeal={nextMeal}
-              onOpenRecipe={(recipe) => editRecipe(recipe)}
-              onOpenPlan={() => setActiveTab("plan")}
+            <SectionHeader icon={<Home size={22} />} title="今天的菜单" />
+            <TodayMenu
+              todayRecipes={todayRecipes}
+              onOpenPlan={openPlanForToday}
               onOpenShopping={() => setActiveTab("shopping")}
+              onOpenRecipe={editRecipe}
             />
           </section>
         )}
@@ -548,40 +606,61 @@ function App() {
           <section className="workspace">
             <SectionHeader
               icon={<CalendarDays size={22} />}
-              title="周计划"
+              title="菜单计划"
               action={
                 <div className="week-controls">
-                  <button className="icon-button" onClick={() => setWeekStart(getWeekStart(new Date()))} title="回到本周">
+                  <button className="icon-button" onClick={() => setPlanDate(getTodayKey())} title="回到今天">
                     <Check size={17} />
                   </button>
-                  <button className="ghost-button" onClick={() => setWeekStart(shiftWeek(weekStart, -1))}>
-                    上一周
+                  <button className="ghost-button" onClick={() => setPlanDate((date) => shiftDay(date, -1))}>
+                    前一天
                   </button>
-                  <button className="ghost-button" onClick={() => setWeekStart(shiftWeek(weekStart, 1))}>
-                    下一周
+                  <button className="ghost-button" onClick={() => setPlanDate((date) => shiftDay(date, 1))}>
+                    后一天
                   </button>
                 </div>
               }
             />
+            {statusMessage && <div className="status-note">{statusMessage}</div>}
+            <div className="day-header">{formatDayHeader(planDate)}</div>
 
-            <div className="plan-grid" style={{ gridTemplateColumns: `minmax(92px, 0.7fr) repeat(${weekDays.length}, minmax(150px, 1fr))` }}>
-              <div className="grid-head">餐次</div>
-              {weekDays.map((day) => (
-                <div className="grid-head" key={day.key}>
-                  <strong>{day.dayName}</strong>
-                  <span>{day.label}</span>
-                </div>
-              ))}
-              {FIXED_MEAL_SLOTS.map((slot) => (
-                <PlanRow
-                  key={slot.id}
-                  slot={slot}
-                  weekDays={weekDays}
-                  recipes={appState.recipes}
-                  getPlannedRecipeIds={getPlannedRecipeIds}
-                  togglePlanRecipe={togglePlanRecipe}
-                />
-              ))}
+            <div className="day-menu">
+              {plannedRecipes.length === 0 ? (
+                <EmptyState title="这一天还没有安排" text="在下方搜索食谱，选择后会弹出食材勾选，可直接加入采购清单。" />
+              ) : (
+                plannedRecipes.map((recipe) => (
+                  <article className="recipe-card" key={recipe.id}>
+                    <div>
+                      <div className="recipe-card-title">
+                        <h3>{recipe.title}</h3>
+                      </div>
+                      <p>{recipe.category || "未分类"}</p>
+                      <RecipeMeta recipe={recipe} />
+                    </div>
+                    <div className="card-actions">
+                      <button className="icon-button" onClick={() => removeRecipeFromDate(recipe.id)} title="移除">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+
+            <div className="plan-picker">
+              <input value={planSearch} onChange={(event) => setPlanSearch(event.target.value)} placeholder="搜索食谱，添加到这一天（候选最多 8 个）" />
+              {planSearch.trim() &&
+                (planSearchResults.length === 0 ? (
+                  <div className="plan-picker-empty">没有匹配的食谱</div>
+                ) : (
+                  <div className="plan-picker-results">
+                    {planSearchResults.map((recipe) => (
+                      <button key={recipe.id} onClick={() => addRecipeToDate(recipe)}>
+                        {recipe.title}
+                      </button>
+                    ))}
+                  </div>
+                ))}
             </div>
           </section>
         )}
@@ -628,7 +707,7 @@ function App() {
                 )}
                 <div className="recipe-list">
                   {filteredRecipes.length === 0 ? (
-                    <EmptyState title="还没有食谱" text="先新增一道常做菜，再把它安排到周计划里。" />
+                    <EmptyState title="还没有食谱" text="先新增一道常做菜，再把它安排到菜单计划里。" />
                   ) : (
                     filteredRecipes.map((recipe) => (
                       <article className="recipe-card" key={recipe.id}>
@@ -707,33 +786,103 @@ function App() {
               action={
                 <button className="primary-button" onClick={() => copyShoppingText()}>
                   <Copy size={16} />
-                  复制整周
+                  复制清单
                 </button>
               }
             />
-            {copyStatus && <div className="status-note">{copyStatus}</div>}
-            <ShoppingCandidatePanel
-              candidates={shoppingCandidates}
-              selectedCandidateIds={selectedCandidateIds}
-              addedCandidateIds={addedCandidateIds}
-              selectedCandidateCount={selectedCandidateCount}
-              toggleCandidate={toggleCandidate}
-              addSelectedCandidates={addSelectedCandidates}
-            />
-            <ManualShoppingForm manualItem={manualItem} weekDays={weekDays} setManualItem={setManualItem} addManualShoppingItem={addManualShoppingItem} />
-            <div className="shopping-days">
-              {shoppingGroups.length === 0 ? (
-                <EmptyState title="暂无采购项" text="从候选食材中勾选，或手动添加其他采购项目。" />
+            {statusMessage && <div className="status-note">{statusMessage}</div>}
+            <ManualShoppingForm manualItem={manualItem} setManualItem={setManualItem} addManualShoppingItem={addManualShoppingItem} />
+            <div className="shopping-list">
+              {sortedShoppingItems.length === 0 ? (
+                <EmptyState title="暂无采购项" text="安排食谱时通过弹窗勾选缺少的食材，或手动添加采购项。" />
               ) : (
-                shoppingGroups.map((group) => (
-                  <ShoppingDay key={group.key} group={group} toggleShoppingItem={toggleShoppingItem} />
+                sortedShoppingItems.map((item) => (
+                  <label className={`shopping-item ${item.checked ? "checked" : ""}`} key={item.id}>
+                    <input type="checkbox" checked={item.checked} onChange={() => toggleShoppingItem(item.id)} />
+                    <span className="category-dot">{item.category}</span>
+                    <strong>{item.name}</strong>
+                    <span>{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
+                    <small>{item.sourceLabel}</small>
+                  </label>
                 ))
               )}
             </div>
           </section>
         )}
+
+        {activeTab === "me" && (
+          <section className="workspace me-workspace">
+            <SectionHeader icon={<UserRound size={22} />} title="我的" />
+            <div className="me-card">
+              <div className="brand">
+                <div className="brand-mark">
+                  <Soup size={26} />
+                </div>
+                <div>
+                  <h1>今天吃啥？</h1>
+                  <p>菜单计划和采购清单</p>
+                </div>
+              </div>
+              <AccountPanel
+                auth={auth}
+                email={accountEmail}
+                setEmail={setAccountEmail}
+                syncStatus={getSyncStatusLabel(auth.isConfigured, auth.session?.user.id, syncMetadata.syncStatus, isOnline)}
+                backupStatus={backupStatus}
+                createLocalBackup={createLocalBackup}
+              />
+              <DataPanel dataStatus={dataStatus} onExport={exportData} onImport={importData} />
+            </div>
+          </section>
+        )}
       </main>
+
+      <nav className="mobile-tabs" aria-label="主导航（移动端）">
+        <NavTabs activeTab={activeTab} onChange={setActiveTab} />
+      </nav>
+
+      {popup && (
+        <IngredientPopup
+          recipe={popup.recipe}
+          selected={popup.selected}
+          onToggleItem={togglePopupItem}
+          onToggleAll={togglePopupAll}
+          onAdd={addPopupItems}
+          onClose={() => setPopup(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function NavTabs({ activeTab, onChange }: { activeTab: Tab; onChange: (tab: Tab) => void }) {
+  return (
+    <>
+      <button className={activeTab === "home" ? "active" : ""} onClick={() => onChange("home")}>
+        <Home size={18} />
+        首页
+      </button>
+      <button className={activeTab === "plan" ? "active" : ""} onClick={() => onChange("plan")}>
+        <CalendarDays size={18} />
+        菜单计划
+      </button>
+      <button className={activeTab === "import" ? "active" : ""} onClick={() => onChange("import")}>
+        <FileInput size={18} />
+        导入中心
+      </button>
+      <button className={activeTab === "recipes" ? "active" : ""} onClick={() => onChange("recipes")}>
+        <Utensils size={18} />
+        食谱库
+      </button>
+      <button className={activeTab === "shopping" ? "active" : ""} onClick={() => onChange("shopping")}>
+        <ShoppingBasket size={18} />
+        采购清单
+      </button>
+      <button className={activeTab === "me" ? "active" : ""} onClick={() => onChange("me")}>
+        <UserRound size={18} />
+        我的
+      </button>
+    </>
   );
 }
 
@@ -816,6 +965,52 @@ function AccountPanel({
   );
 }
 
+function DataPanel({
+  dataStatus,
+  onExport,
+  onImport,
+}: {
+  dataStatus: string;
+  onExport: () => void;
+  onImport: (file: File) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <section className="account-panel">
+      <div className="account-heading">
+        <Download size={17} />
+        <span>数据</span>
+      </div>
+      <p>导出 JSON 备份文件，或从备份文件恢复数据。</p>
+      <div className="account-actions">
+        <button className="ghost-button" onClick={onExport}>
+          <Download size={15} />
+          导出
+        </button>
+        <button className="ghost-button" onClick={() => fileInputRef.current?.click()}>
+          <Upload size={15} />
+          导入
+        </button>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) {
+            onImport(file);
+          }
+          event.target.value = "";
+        }}
+      />
+      {dataStatus && <p className="account-message">{dataStatus}</p>}
+    </section>
+  );
+}
+
 function SectionHeader({
   icon,
   title,
@@ -849,31 +1044,54 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   return <span>{parts.join(" · ")}</span>;
 }
 
-function NextMealCard({
-  nextMeal,
-  onOpenRecipe,
+function TodayMenu({
+  todayRecipes,
   onOpenPlan,
   onOpenShopping,
+  onOpenRecipe,
 }: {
-  nextMeal: NextMeal | null;
-  onOpenRecipe: (recipe: Recipe) => void;
+  todayRecipes: Recipe[];
   onOpenPlan: () => void;
   onOpenShopping: () => void;
+  onOpenRecipe: (recipe: Recipe) => void;
 }) {
-  if (!nextMeal) {
+  if (todayRecipes.length === 0) {
     return (
       <div className="next-meal-empty">
-        <EmptyState title="还没有未来计划" text="去周计划里安排下一餐，首页会自动显示最近要做的菜。" />
+        <EmptyState title="今天还没有安排" text="去菜单计划里安排今天的菜，选完后可直接勾选缺少的食材。" />
         <button className="primary-button" onClick={onOpenPlan}>
           <CalendarDays size={16} />
-          去周计划添加
+          去安排今天的菜单
         </button>
       </div>
     );
   }
 
-  const items = getItemsForRecipe(nextMeal.recipe);
-  const steps = nextMeal.recipe.method
+  return (
+    <div className="today-menu">
+      {todayRecipes.map((recipe) => (
+        <TodayRecipeCard
+          key={recipe.id}
+          recipe={recipe}
+          onOpenRecipe={onOpenRecipe}
+          onOpenShopping={onOpenShopping}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TodayRecipeCard({
+  recipe,
+  onOpenRecipe,
+  onOpenShopping,
+}: {
+  recipe: Recipe;
+  onOpenRecipe: (recipe: Recipe) => void;
+  onOpenShopping: () => void;
+}) {
+  const items = getItemsForRecipe(recipe);
+  const steps = recipe.method
     .split("\n")
     .map((step) => step.trim())
     .filter(Boolean);
@@ -881,12 +1099,8 @@ function NextMealCard({
   return (
     <article className="next-meal-card">
       <div className="next-meal-main">
-        <div className="next-meal-meta">
-          <span>{formatDateLabel(nextMeal.dateTime)}</span>
-          <span>{nextMeal.slotName}</span>
-        </div>
-        <h2>{nextMeal.recipe.title}</h2>
-        {nextMeal.recipe.category && <p>{nextMeal.recipe.category}</p>}
+        <h2>{recipe.title}</h2>
+        {recipe.category && <p>{recipe.category}</p>}
       </div>
 
       {items.length > 0 && (
@@ -915,109 +1129,16 @@ function NextMealCard({
       )}
 
       <div className="next-meal-actions">
-        <button className="ghost-button" onClick={() => onOpenRecipe(nextMeal.recipe)}>
+        <button className="ghost-button" onClick={() => onOpenRecipe(recipe)}>
           <Utensils size={16} />
           查看食谱
         </button>
         <button className="primary-button" onClick={onOpenShopping}>
-          查看采购候选
+          查看采购清单
           <ArrowRight size={16} />
         </button>
       </div>
     </article>
-  );
-}
-
-function PlanRow({
-  slot,
-  weekDays,
-  recipes,
-  getPlannedRecipeIds,
-  togglePlanRecipe,
-}: {
-  slot: MealSlot;
-  weekDays: ReturnType<typeof getWeekDays>;
-  recipes: Recipe[];
-  getPlannedRecipeIds: (date: string, slotId: string) => string[];
-  togglePlanRecipe: (date: string, slotId: string, recipeId: string) => void;
-}) {
-  return (
-    <>
-      <div className="slot-label">{slot.name || "未命名"}</div>
-      {weekDays.map((day) => (
-        <div className="plan-cell" key={`${day.key}-${slot.id}`}>
-          <PlanRecipePicker
-            values={getPlannedRecipeIds(day.key, slot.id)}
-            recipes={recipes}
-            toggleRecipe={(recipeId) => togglePlanRecipe(day.key, slot.id, recipeId)}
-          />
-        </div>
-      ))}
-    </>
-  );
-}
-
-function PlanRecipePicker({
-  values,
-  recipes,
-  toggleRecipe,
-}: {
-  values: string[];
-  recipes: Recipe[];
-  toggleRecipe: (recipeId: string) => void;
-}) {
-  const [keyword, setKeyword] = useState("");
-  const selectedRecipes = values.flatMap((value) => {
-    const recipe = recipes.find((candidate) => candidate.id === value);
-    return recipe ? [recipe] : [];
-  });
-  const filteredRecipes = useMemo(() => {
-    const normalized = keyword.trim().toLowerCase();
-    if (!normalized) {
-      return [];
-    }
-    return recipes
-      .filter(
-        (recipe) =>
-          !values.includes(recipe.id) &&
-          [recipe.title, recipe.category, recipe.method, recipe.rawText].join(" ").toLowerCase().includes(normalized),
-      )
-      .slice(0, 6);
-  }, [keyword, recipes, values]);
-
-  return (
-    <div className="plan-picker">
-      {selectedRecipes.length > 0 ? (
-        <div className="plan-picker-selected">
-          {selectedRecipes.map((recipe) => (
-            <span className="plan-recipe-chip" key={recipe.id}>
-              {recipe.title}
-              <button onClick={() => toggleRecipe(recipe.id)} title={`移除${recipe.title}`}>
-                <X size={13} />
-              </button>
-            </span>
-          ))}
-        </div>
-      ) : (
-        <div className="plan-picker-empty">不安排</div>
-      )}
-      <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索食谱" />
-      {keyword.trim() && filteredRecipes.length > 0 && (
-        <div className="plan-picker-results">
-          {filteredRecipes.map((recipe) => (
-            <button
-              key={recipe.id}
-              onClick={() => {
-                toggleRecipe(recipe.id);
-                setKeyword("");
-              }}
-            >
-              {recipe.title}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -1192,6 +1313,68 @@ function ItemEditor({
   );
 }
 
+function IngredientPopup({
+  recipe,
+  selected,
+  onToggleItem,
+  onToggleAll,
+  onAdd,
+  onClose,
+}: {
+  recipe: Recipe;
+  selected: Record<string, boolean>;
+  onToggleItem: (itemId: string) => void;
+  onToggleAll: () => void;
+  onAdd: () => void;
+  onClose: () => void;
+}) {
+  const items = getItemsForRecipe(recipe);
+  const selectedCount = items.filter((item) => selected[item.id]).length;
+  const allSelected = items.length > 0 && items.every((item) => selected[item.id]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+        <header className="modal-header">
+          <div>
+            <h3>{recipe.title}</h3>
+            <p>勾选缺少的食材，加入采购清单</p>
+          </div>
+          <button className="icon-button" onClick={onClose} title="关闭">
+            <X size={16} />
+          </button>
+        </header>
+
+        <div className="shopping-list modal-ingredient-list">
+          {items.length === 0 ? (
+            <EmptyState title="这个食谱还没有食材" text="可以先加入菜单，之后在食谱库补全食材。" compact />
+          ) : (
+            items.map((item) => (
+              <label className={`shopping-item ${selected[item.id] ? "selected" : ""}`} key={item.id}>
+                <input type="checkbox" checked={Boolean(selected[item.id])} onChange={() => onToggleItem(item.id)} />
+                <span className="category-dot">{item.category}</span>
+                <strong>{item.name}</strong>
+                <span>{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <footer className="modal-footer">
+          <label className="select-all">
+            <input type="checkbox" checked={allSelected} onChange={onToggleAll} />
+            全选
+          </label>
+          <button className="primary-button" onClick={onAdd} disabled={selectedCount === 0}>
+            <ListPlus size={16} />
+            加入已选{selectedCount ? ` (${selectedCount})` : ""}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 function ImportPreview({
   drafts,
   updateDraft,
@@ -1256,78 +1439,13 @@ function ImportPreview({
   );
 }
 
-function ShoppingCandidatePanel({
-  candidates,
-  selectedCandidateIds,
-  addedCandidateIds,
-  selectedCandidateCount,
-  toggleCandidate,
-  addSelectedCandidates,
-}: {
-  candidates: ShoppingCandidate[];
-  selectedCandidateIds: Record<string, boolean>;
-  addedCandidateIds: Set<string>;
-  selectedCandidateCount: number;
-  toggleCandidate: (id: string) => void;
-  addSelectedCandidates: () => void;
-}) {
-  const groups = groupShoppingCandidates(candidates);
-
-  return (
-    <section className="shopping-panel">
-      <header>
-        <div>
-          <h3>采购候选</h3>
-          <p>从周计划中的食谱生成，默认不加入正式清单。</p>
-        </div>
-        <button className="primary-button" onClick={addSelectedCandidates} disabled={selectedCandidateCount === 0}>
-          <ListPlus size={16} />
-          加入已选 {selectedCandidateCount ? `(${selectedCandidateCount})` : ""}
-        </button>
-      </header>
-      {groups.length === 0 ? (
-        <EmptyState title="暂无候选食材" text="在周计划里安排带食材的食谱后，这里会生成候选项。" compact />
-      ) : (
-        <div className="candidate-groups">
-          {groups.map((group) => (
-            <div className="candidate-group" key={group.key}>
-              <h4>{group.label}</h4>
-              <div className="shopping-list">
-                {group.items.map((item) => {
-                  const added = addedCandidateIds.has(item.id);
-                  return (
-                    <label className={`shopping-item ${added ? "checked" : ""}`} key={item.id}>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(selectedCandidateIds[item.id])}
-                        disabled={added}
-                        onChange={() => toggleCandidate(item.id)}
-                      />
-                      <span className="category-dot">{item.category}</span>
-                      <strong>{item.name}</strong>
-                      <span>{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
-                      <small>{added ? "已加入清单" : item.recipeName}</small>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
 function ManualShoppingForm({
   manualItem,
-  weekDays,
   setManualItem,
   addManualShoppingItem,
 }: {
-  manualItem: { date: string; name: string; amount: string; unit: string; category: Category };
-  weekDays: ReturnType<typeof getWeekDays>;
-  setManualItem: Dispatch<SetStateAction<{ date: string; name: string; amount: string; unit: string; category: Category }>>;
+  manualItem: { name: string; amount: string; unit: string; category: Category };
+  setManualItem: Dispatch<SetStateAction<{ name: string; amount: string; unit: string; category: Category }>>;
   addManualShoppingItem: () => void;
 }) {
   return (
@@ -1335,7 +1453,7 @@ function ManualShoppingForm({
       <header>
         <div>
           <h3>手动添加</h3>
-          <p>不选日期会进入未指定。</p>
+          <p>加入统一的采购清单。</p>
         </div>
         <button className="primary-button" onClick={addManualShoppingItem} disabled={!manualItem.name.trim()}>
           <Plus size={16} />
@@ -1343,14 +1461,6 @@ function ManualShoppingForm({
         </button>
       </header>
       <div className="manual-shopping-grid">
-        <select value={manualItem.date} onChange={(event) => setManualItem((current) => ({ ...current, date: event.target.value }))}>
-          <option value="">未指定</option>
-          {weekDays.map((day) => (
-            <option key={day.key} value={day.key}>
-              {day.dayName} {day.label}
-            </option>
-          ))}
-        </select>
         <input value={manualItem.name} onChange={(event) => setManualItem((current) => ({ ...current, name: event.target.value }))} placeholder="采购项" />
         <input value={manualItem.amount} onChange={(event) => setManualItem((current) => ({ ...current, amount: event.target.value }))} placeholder="数量" />
         <input value={manualItem.unit} onChange={(event) => setManualItem((current) => ({ ...current, unit: event.target.value }))} placeholder="单位" />
@@ -1363,36 +1473,6 @@ function ManualShoppingForm({
         </select>
       </div>
     </section>
-  );
-}
-
-function ShoppingDay({
-  group,
-  toggleShoppingItem,
-}: {
-  group: { key: string; label: string; items: ShoppingListItem[] };
-  toggleShoppingItem: (id: string) => void;
-}) {
-  return (
-    <article className="shopping-day">
-      <header>
-        <div>
-          <h3>{group.label}</h3>
-          <p>{group.items.length} 项</p>
-        </div>
-      </header>
-      <div className="shopping-list">
-        {group.items.map((item) => (
-          <label className={`shopping-item ${item.checked ? "checked" : ""}`} key={item.id}>
-            <input type="checkbox" checked={item.checked} onChange={() => toggleShoppingItem(item.id)} />
-            <span className="category-dot">{item.category}</span>
-            <strong>{item.name}</strong>
-            <span>{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
-            <small>{item.sourceLabel}</small>
-          </label>
-        ))}
-      </div>
-    </article>
   );
 }
 
