@@ -4,10 +4,15 @@ import type { Category, Ingredient, Recipe, RecipeType } from "./types";
 
 export const isCategory = (value: string): value is Category => CATEGORIES.includes(value as Category);
 
-export const normalizeCategory = (value: unknown): Category =>
-  typeof value === "string" && isCategory(value) ? value : "其他";
+// 旧分类迁移：调料 → 调味料，其余（蔬菜/豆类/谷类/其他）→ 食材
+export const normalizeCategory = (value: unknown): Category => {
+  if (value === "食材" || value === "调味料") {
+    return value;
+  }
+  return value === "调料" ? "调味料" : "食材";
+};
 
-export const createBlankItem = (category: Category = "蔬菜"): Ingredient => ({
+export const createBlankItem = (category: Category = "食材"): Ingredient => ({
   id: createId(),
   name: "",
   amount: "",
@@ -67,7 +72,14 @@ export const migrateRecipe = (
 
 export const getItemsForRecipe = (recipe: Recipe) => recipe.ingredients.filter((item) => item.name.trim());
 
-export const getRecipeSeasonings = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category === "调料");
+export const getRecipeSeasonings = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category === "调味料");
 
 export const getRecipeFoodIngredients = (recipe: Recipe) =>
-  recipe.ingredients.filter((item) => item.category !== "调料");
+  recipe.ingredients.filter((item) => item.category === "食材");
+
+// 食谱卡片摘要：仅食材（不含调味料），仅名称，空格分隔
+export const getRecipeIngredientSummary = (recipe: Recipe) =>
+  recipe.ingredients
+    .filter((item) => item.category === "食材" && item.name.trim())
+    .map((item) => item.name.trim())
+    .join(" ");

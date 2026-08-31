@@ -12,3 +12,9 @@ android/capacitor-cordova-android-plugins/build/
 
 # APK 构建产物
 *.apk
+
+# 用户原始导入数据（flomo 导出文本等）
+scripts/flomo-export-*.txt
+
+# WorkBuddy 本地记忆
+.workbuddy/

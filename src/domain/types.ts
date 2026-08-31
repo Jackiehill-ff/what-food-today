@@ -1,6 +1,6 @@
 export type Tab = "home" | "plan" | "import" | "recipes" | "shopping" | "me";
 
-export type Category = "蔬菜" | "豆类" | "谷类" | "调料" | "其他";
+export type Category = "食材" | "调味料";
 
 export type RecipeType = "full" | "simple";
 export type RecipeSection = "ingredients" | "seasonings";

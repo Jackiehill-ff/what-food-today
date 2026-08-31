@@ -1,7 +1,7 @@
 import { DEFAULT_STATE, STORAGE_KEY } from "../domain/constants";
 import { createId, createTimestamp } from "../domain/ids";
-import { migrateRecipe } from "../domain/recipes";
-import type { AppState, ImportRecord, MealPlanEntry } from "../domain/types";
+import { migrateRecipe, normalizeCategory } from "../domain/recipes";
+import type { AppState, ImportRecord, MealPlanEntry, ShoppingListItem } from "../domain/types";
 
 const migrateImportRecord = (record: Partial<ImportRecord>): ImportRecord => ({
   id: record.id || createId(),
@@ -13,6 +13,19 @@ const migrateImportRecord = (record: Partial<ImportRecord>): ImportRecord => ({
   rawText: record.rawText,
   importedRecipeIds: Array.isArray(record.importedRecipeIds) ? record.importedRecipeIds : [],
   createdAt: record.createdAt || createTimestamp(),
+});
+
+const migrateShoppingItem = (item: Partial<ShoppingListItem>): ShoppingListItem => ({
+  id: item.id ?? createId(),
+  date: typeof item.date === "string" ? item.date : "",
+  name: typeof item.name === "string" ? item.name : "",
+  amount: typeof item.amount === "string" ? item.amount : "",
+  unit: typeof item.unit === "string" ? item.unit : "",
+  category: normalizeCategory(item.category),
+  sourceLabel: typeof item.sourceLabel === "string" ? item.sourceLabel : "",
+  sourceCandidateId: item.sourceCandidateId,
+  createdAt: typeof item.createdAt === "number" ? item.createdAt : 0,
+  checked: Boolean(item.checked),
 });
 
 // 旧版按早餐/午餐/晚餐（slotId）安排；迁移时去掉 slotId，
@@ -51,7 +64,7 @@ export const migrateAppState = (parsed: Partial<AppState>): AppState => {
     recipes,
     importRecords: Array.isArray(parsed.importRecords) ? parsed.importRecords.map(migrateImportRecord) : [],
     mealPlan: migrateMealPlan(parsed.mealPlan),
-    shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems : [],
+    shoppingItems: Array.isArray(parsed.shoppingItems) ? parsed.shoppingItems.map(migrateShoppingItem) : [],
   };
 };
 

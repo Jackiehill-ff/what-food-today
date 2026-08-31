@@ -1,13 +1,13 @@
 import { createId, createTimestamp } from "./ids";
 import { createBlankItem } from "./recipes";
-import type { ImportDraft, Recipe } from "./types";
+import type { ImportDraft, Ingredient, Recipe } from "./types";
 
 export const createImportDraft = (recipe: Partial<Recipe> & { rawText: string; parseFailed?: boolean }): ImportDraft => ({
   id: createId(),
   title: recipe.title ?? "",
   type: "full",
   category: "",
-  ingredients: recipe.ingredients?.length ? recipe.ingredients : [createBlankItem("其他")],
+  ingredients: recipe.ingredients?.length ? recipe.ingredients : [createBlankItem("食材")],
   method: recipe.method ?? "",
   rawText: recipe.rawText,
   createdAt: createTimestamp(),
@@ -15,14 +15,14 @@ export const createImportDraft = (recipe: Partial<Recipe> & { rawText: string; p
   parseFailed: Boolean(recipe.parseFailed),
 });
 
-const FIELD_PATTERN = /^(食材|做法)\s*[:：]/;
+const FIELD_PATTERN = /^(食材|调味料|做法)\s*[:：]/;
 
 const isValidTitleLine = (line: string) => {
   const trimmed = line.trim();
   return Boolean(trimmed) && !trimmed.startsWith("#") && !FIELD_PATTERN.test(trimmed);
 };
 
-const textAfterField = (line: string, field: "食材" | "做法") =>
+const textAfterField = (line: string, field: "食材" | "调味料" | "做法") =>
   line.replace(new RegExp(`^${field}\\s*[:：]\\s*`), "").trim();
 
 const findPreviousIndex = (lines: string[], startIndex: number, predicate: (line: string) => boolean) => {
@@ -47,6 +47,19 @@ const findNextIndex = (
   }
   return -1;
 };
+
+const splitNames = (line: string, field: "食材" | "调味料") =>
+  textAfterField(line, field)
+    .split(/[、，,;；]/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+const toIngredient = (name: string, category: "食材" | "调味料"): Ingredient => ({
+  ...createBlankItem(category),
+  name,
+  amount: "",
+  unit: "",
+});
 
 export const parseRecipeImportText = (text: string): ImportDraft[] => {
   const lines = text.split(/\r?\n/).map((line) => line.trim());
@@ -80,22 +93,21 @@ export const parseRecipeImportText = (text: string): ImportDraft[] => {
             .filter(Boolean)
             .join("\n")
         : "";
-    const ingredients = textAfterField(lines[ingredientLineIndex], "食材")
-      .split(/[、，,]/)
-      .map((name) => name.trim())
-      .filter(Boolean)
-      .map((name) => ({
-        ...createBlankItem("其他"),
-        name,
-        amount: "",
-        unit: "",
-      }));
+
+    // 食材与调味料分开解析（同一段内），调味料行的解析范围到做法行或下一个食材块为止
+    const blockEnd = methodLineIndex >= 0 ? methodLineIndex : nextIngredientLineIndex;
+    const foodIngredients = splitNames(lines[ingredientLineIndex], "食材").map((name) => toIngredient(name, "食材"));
+    const seasoningIngredients = lines
+      .slice(ingredientLineIndex + 1, blockEnd)
+      .filter((line) => /^调味料\s*[:：]/.test(line))
+      .flatMap((line) => splitNames(line, "调味料").map((name) => toIngredient(name, "调味料")));
+
     const rawStartIndex = titleLineIndex >= 0 ? titleLineIndex : ingredientLineIndex;
     const rawEndIndex = methodEndIndex > rawStartIndex ? methodEndIndex : nextIngredientLineIndex;
 
     return createImportDraft({
       title,
-      ingredients,
+      ingredients: [...foodIngredients, ...seasoningIngredients],
       method,
       rawText: lines.slice(rawStartIndex, rawEndIndex).join("\n"),
       parseFailed: !title || !method,

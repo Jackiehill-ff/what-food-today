@@ -1,5 +1,6 @@
 import {
-  ArrowRight,
+  ArrowDown,
+  ArrowUp,
   CalendarDays,
   Check,
   ClipboardList,
@@ -29,7 +30,7 @@ import type { Dispatch, DragEvent, FormEvent, ReactNode, SetStateAction } from "
 import { useAuthSession } from "./auth/useAuthSession";
 import { localAppStateRepository, migrateAppState } from "./data/appStateRepository";
 import { createAppStateBackup, loadSyncMetadata, saveSyncMetadata } from "./data/syncStorage";
-import { CATEGORIES, RECIPE_ITEM_DRAG_TYPE } from "./domain/constants";
+import { CATEGORIES, RECIPE_ITEM_DRAG_TYPE, UNIT_LABELS, UNIT_OPTIONS } from "./domain/constants";
 import { createId, createTimestamp } from "./domain/ids";
 import { parseRecipeImportText } from "./domain/importParser";
 import { formatDayHeader, getPlannedRecipesForDate, getTodayKey, shiftDay } from "./domain/mealPlan";
@@ -38,6 +39,7 @@ import {
   createBlankRecipe,
   getItemsForRecipe,
   getRecipeFoodIngredients,
+  getRecipeIngredientSummary,
   getRecipeSeasonings,
 } from "./domain/recipes";
 import { sortShoppingItems } from "./domain/shopping";
@@ -66,7 +68,7 @@ function App() {
     name: "",
     amount: "",
     unit: "",
-    category: "蔬菜" as Category,
+    category: "食材" as Category,
   });
   const [statusMessage, setStatusMessage] = useState("");
   const [importText, setImportText] = useState("");
@@ -248,7 +250,7 @@ function App() {
   const addImportIngredient = (draftId: string) => {
     setImportDrafts((current) =>
       current.map((draft) =>
-        draft.id === draftId ? { ...draft, ingredients: [...draft.ingredients, createBlankItem("其他")] } : draft,
+        draft.id === draftId ? { ...draft, ingredients: [...draft.ingredients, createBlankItem("食材")] } : draft,
       ),
     );
   };
@@ -275,7 +277,7 @@ function App() {
         type: "full",
         category: "",
         ingredients: draft.ingredients
-          .map((item) => ({ ...item, name: item.name.trim(), amount: "", unit: "", category: item.category || "其他" }))
+          .map((item) => ({ ...item, name: item.name.trim(), amount: "", unit: "", category: item.category || "食材" }))
           .filter((item) => item.name),
         method: draft.method.trim(),
         rawText: draft.rawText.trim(),
@@ -311,7 +313,7 @@ function App() {
   const addRecipeItem = (section: RecipeSection) => {
     setRecipeDraft((current) => ({
       ...current,
-      ingredients: [...current.ingredients, createBlankItem(section === "seasonings" ? "调料" : "蔬菜")],
+      ingredients: [...current.ingredients, createBlankItem(section === "seasonings" ? "调味料" : "食材")],
     }));
   };
 
@@ -319,7 +321,7 @@ function App() {
     setRecipeDraft((current) => ({
       ...current,
       ingredients:
-        current.ingredients.filter((item) => (section === "seasonings" ? item.category === "调料" : item.category !== "调料")).length === 1
+        current.ingredients.filter((item) => (section === "seasonings" ? item.category === "调味料" : item.category !== "调味料")).length === 1
           ? current.ingredients
           : current.ingredients.filter((item) => item.id !== itemId),
     }));
@@ -332,9 +334,33 @@ function App() {
     setRecipeDraft((current) => ({
       ...current,
       ingredients: current.ingredients.map((item) =>
-        item.id === itemId ? { ...item, category: target === "seasonings" ? "调料" : "蔬菜" } : item,
+        item.id === itemId ? { ...item, category: target === "seasonings" ? "调味料" : "食材" } : item,
       ),
     }));
+  };
+
+  const reorderRecipeItem = (section: RecipeSection, itemId: string, direction: -1 | 1) => {
+    setRecipeDraft((current) => {
+      const ingredients = [...current.ingredients];
+      const index = ingredients.findIndex((item) => item.id === itemId);
+      if (index === -1) {
+        return current;
+      }
+      const targetCategory: Category = section === "seasonings" ? "调味料" : "食材";
+      let neighborIndex = -1;
+      for (let i = index + direction; i >= 0 && i < ingredients.length; i += direction) {
+        if (ingredients[i].category === targetCategory) {
+          neighborIndex = i;
+          break;
+        }
+      }
+      if (neighborIndex === -1) {
+        return current;
+      }
+      const next = [...current.ingredients];
+      [next[index], next[neighborIndex]] = [next[neighborIndex], next[index]];
+      return { ...current, ingredients: next };
+    });
   };
 
   const addRecipeToDate = (recipe: Recipe) => {
@@ -596,7 +622,6 @@ function App() {
             <TodayMenu
               todayRecipes={todayRecipes}
               onOpenPlan={openPlanForToday}
-              onOpenShopping={() => setActiveTab("shopping")}
               onOpenRecipe={editRecipe}
             />
           </section>
@@ -608,7 +633,7 @@ function App() {
               icon={<CalendarDays size={22} />}
               title="菜单计划"
               action={
-                <div className="week-controls">
+                <div className="day-controls">
                   <button className="icon-button" onClick={() => setPlanDate(getTodayKey())} title="回到今天">
                     <Check size={17} />
                   </button>
@@ -682,6 +707,7 @@ function App() {
                 addRecipeItem={addRecipeItem}
                 removeRecipeItem={removeRecipeItem}
                 moveRecipeItem={moveRecipeItem}
+                reorderRecipeItem={reorderRecipeItem}
               />
 
               <div className="recipe-list-panel">
@@ -715,8 +741,7 @@ function App() {
                           <div className="recipe-card-title">
                             <h3>{recipe.title}</h3>
                           </div>
-                          <p>{recipe.category || "未分类"}</p>
-                          <RecipeMeta recipe={recipe} />
+                          <p>{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
                         </div>
                         <div className="card-actions">
                           <button className="icon-button" onClick={() => editRecipe(recipe)} title="编辑">
@@ -838,7 +863,7 @@ function App() {
       </main>
 
       <nav className="mobile-tabs" aria-label="主导航（移动端）">
-        <NavTabs activeTab={activeTab} onChange={setActiveTab} />
+        <NavTabs activeTab={activeTab} onChange={setActiveTab} compact />
       </nav>
 
       {popup && (
@@ -855,31 +880,31 @@ function App() {
   );
 }
 
-function NavTabs({ activeTab, onChange }: { activeTab: Tab; onChange: (tab: Tab) => void }) {
+function NavTabs({ activeTab, onChange, compact = false }: { activeTab: Tab; onChange: (tab: Tab) => void; compact?: boolean }) {
   return (
     <>
       <button className={activeTab === "home" ? "active" : ""} onClick={() => onChange("home")}>
-        <Home size={18} />
+        <Home size={compact ? 19 : 18} />
         首页
       </button>
       <button className={activeTab === "plan" ? "active" : ""} onClick={() => onChange("plan")}>
-        <CalendarDays size={18} />
-        菜单计划
+        <CalendarDays size={compact ? 19 : 18} />
+        {compact ? "菜单" : "菜单计划"}
       </button>
       <button className={activeTab === "import" ? "active" : ""} onClick={() => onChange("import")}>
-        <FileInput size={18} />
-        导入中心
+        <FileInput size={compact ? 19 : 18} />
+        {compact ? "导入" : "导入中心"}
       </button>
       <button className={activeTab === "recipes" ? "active" : ""} onClick={() => onChange("recipes")}>
-        <Utensils size={18} />
-        食谱库
+        <Utensils size={compact ? 19 : 18} />
+        {compact ? "食谱" : "食谱库"}
       </button>
       <button className={activeTab === "shopping" ? "active" : ""} onClick={() => onChange("shopping")}>
-        <ShoppingBasket size={18} />
-        采购清单
+        <ShoppingBasket size={compact ? 19 : 18} />
+        {compact ? "采购" : "采购清单"}
       </button>
       <button className={activeTab === "me" ? "active" : ""} onClick={() => onChange("me")}>
-        <UserRound size={18} />
+        <UserRound size={compact ? 19 : 18} />
         我的
       </button>
     </>
@@ -1047,17 +1072,15 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
 function TodayMenu({
   todayRecipes,
   onOpenPlan,
-  onOpenShopping,
   onOpenRecipe,
 }: {
   todayRecipes: Recipe[];
   onOpenPlan: () => void;
-  onOpenShopping: () => void;
   onOpenRecipe: (recipe: Recipe) => void;
 }) {
   if (todayRecipes.length === 0) {
     return (
-      <div className="next-meal-empty">
+      <div className="today-menu-empty">
         <EmptyState title="今天还没有安排" text="去菜单计划里安排今天的菜，选完后可直接勾选缺少的食材。" />
         <button className="primary-button" onClick={onOpenPlan}>
           <CalendarDays size={16} />
@@ -1070,75 +1093,21 @@ function TodayMenu({
   return (
     <div className="today-menu">
       {todayRecipes.map((recipe) => (
-        <TodayRecipeCard
-          key={recipe.id}
-          recipe={recipe}
-          onOpenRecipe={onOpenRecipe}
-          onOpenShopping={onOpenShopping}
-        />
+        <article className="recipe-card" key={recipe.id}>
+          <div>
+            <div className="recipe-card-title">
+              <h3>{recipe.title}</h3>
+            </div>
+            <p>{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
+          </div>
+          <div className="card-actions">
+            <button className="icon-button" onClick={() => onOpenRecipe(recipe)} title="查看食谱">
+              <Utensils size={16} />
+            </button>
+          </div>
+        </article>
       ))}
     </div>
-  );
-}
-
-function TodayRecipeCard({
-  recipe,
-  onOpenRecipe,
-  onOpenShopping,
-}: {
-  recipe: Recipe;
-  onOpenRecipe: (recipe: Recipe) => void;
-  onOpenShopping: () => void;
-}) {
-  const items = getItemsForRecipe(recipe);
-  const steps = recipe.method
-    .split("\n")
-    .map((step) => step.trim())
-    .filter(Boolean);
-
-  return (
-    <article className="next-meal-card">
-      <div className="next-meal-main">
-        <h2>{recipe.title}</h2>
-        {recipe.category && <p>{recipe.category}</p>}
-      </div>
-
-      {items.length > 0 && (
-        <section className="next-meal-section">
-          <h3>食材</h3>
-          <div className="next-meal-items">
-            {items.map((item) => (
-              <span key={item.id}>
-                {item.name}
-                {[item.amount, item.unit].filter(Boolean).join("") && ` ${[item.amount, item.unit].filter(Boolean).join("")}`}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {steps.length > 0 && (
-        <section className="next-meal-section">
-          <h3>做法</h3>
-          <ol className="next-meal-steps">
-            {steps.map((step, index) => (
-              <li key={`${step}-${index}`}>{step}</li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      <div className="next-meal-actions">
-        <button className="ghost-button" onClick={() => onOpenRecipe(recipe)}>
-          <Utensils size={16} />
-          查看食谱
-        </button>
-        <button className="primary-button" onClick={onOpenShopping}>
-          查看采购清单
-          <ArrowRight size={16} />
-        </button>
-      </div>
-    </article>
   );
 }
 
@@ -1152,6 +1121,7 @@ function RecipeForm({
   addRecipeItem,
   removeRecipeItem,
   moveRecipeItem,
+  reorderRecipeItem,
 }: {
   draft: Recipe;
   editingRecipeId: string | null;
@@ -1162,6 +1132,7 @@ function RecipeForm({
   addRecipeItem: (section: RecipeSection) => void;
   removeRecipeItem: (section: RecipeSection, itemId: string) => void;
   moveRecipeItem: (source: RecipeSection, target: RecipeSection, itemId: string) => void;
+  reorderRecipeItem: (section: RecipeSection, itemId: string, direction: -1 | 1) => void;
 }) {
   return (
     <div className="editor-panel">
@@ -1184,6 +1155,7 @@ function RecipeForm({
         addRecipeItem={addRecipeItem}
         removeRecipeItem={removeRecipeItem}
         moveRecipeItem={moveRecipeItem}
+        reorderRecipeItem={reorderRecipeItem}
       />
 
       <ItemEditor
@@ -1194,6 +1166,7 @@ function RecipeForm({
         addRecipeItem={addRecipeItem}
         removeRecipeItem={removeRecipeItem}
         moveRecipeItem={moveRecipeItem}
+        reorderRecipeItem={reorderRecipeItem}
       />
 
       <label>
@@ -1239,6 +1212,7 @@ function ItemEditor({
   addRecipeItem,
   removeRecipeItem,
   moveRecipeItem,
+  reorderRecipeItem,
 }: {
   title: string;
   items: Ingredient[];
@@ -1247,6 +1221,7 @@ function ItemEditor({
   addRecipeItem: (section: RecipeSection) => void;
   removeRecipeItem: (section: RecipeSection, itemId: string) => void;
   moveRecipeItem: (source: RecipeSection, target: RecipeSection, itemId: string) => void;
+  reorderRecipeItem: (section: RecipeSection, itemId: string, direction: -1 | 1) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -1279,7 +1254,7 @@ function ItemEditor({
         </button>
       </div>
       <div className="item-table">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <div className="item-row" key={item.id}>
             <button
               className="drag-handle"
@@ -1295,7 +1270,13 @@ function ItemEditor({
             </button>
             <input value={item.name} onChange={(event) => updateRecipeItem(section, item.id, "name", event.target.value)} placeholder="名称" />
             <input value={item.amount} onChange={(event) => updateRecipeItem(section, item.id, "amount", event.target.value)} placeholder="数量" />
-            <input value={item.unit} onChange={(event) => updateRecipeItem(section, item.id, "unit", event.target.value)} placeholder="单位" />
+            <select value={item.unit} onChange={(event) => updateRecipeItem(section, item.id, "unit", event.target.value)}>
+              {UNIT_OPTIONS.map((unit) => (
+                <option key={unit} value={unit}>
+                  {UNIT_LABELS[unit]}
+                </option>
+              ))}
+            </select>
             <select value={item.category} onChange={(event) => updateRecipeItem(section, item.id, "category", event.target.value)}>
               {CATEGORIES.map((category) => (
                 <option key={category} value={category}>
@@ -1303,7 +1284,27 @@ function ItemEditor({
                 </option>
               ))}
             </select>
-            <button className="icon-button" onClick={() => removeRecipeItem(section, item.id)} title="删除">
+            <div className="item-reorder" role="group" aria-label="调整顺序">
+              <button
+                className="reorder-button"
+                onClick={() => reorderRecipeItem(section, item.id, -1)}
+                disabled={index === 0}
+                title="上移"
+                type="button"
+              >
+                <ArrowUp size={14} />
+              </button>
+              <button
+                className="reorder-button"
+                onClick={() => reorderRecipeItem(section, item.id, 1)}
+                disabled={index === items.length - 1}
+                title="下移"
+                type="button"
+              >
+                <ArrowDown size={14} />
+              </button>
+            </div>
+            <button className="icon-button item-delete" onClick={() => removeRecipeItem(section, item.id)} title="删除">
               <Trash2 size={15} />
             </button>
           </div>
