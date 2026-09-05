@@ -1,5 +1,11 @@
 # Todo
 
+## 已完成（2026-09-05 发布收尾清理）
+
+- [x] 删除过程性文件：`scripts/recipe-images/`（搜索映射 search-results.json、flomo 映射 flomo-images.json、41MB cache）、`dist/`、`android/app/build`、`android/.gradle`；flomo 映射可随时用 `extract-flomo-images.mjs` 重新生成。
+- [x] 删除远端 `origin/app-v1` 分支，仅保留本地 `app-v1`；`main` 已包含全部提交。
+- [x] 保留：`what-food-today.apk`（装机产物）、`scripts/flomo-export-2026-09-01.txt`（源文本孤本，Downloads 清理后不可再生）。
+
 ## 已完成（2026-09-05 第三轮：菜单计划 ⋮ 菜单改版）
 
 - [x] ⋮ 展开面板：上方显示完整做法（保换行、超高滚动），底部「修改时间」日期选择 + 「删除」按钮同一行。

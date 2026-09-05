@@ -32,8 +32,8 @@
 - `src/domain/shopping.ts`：统一采购清单排序 helper。
 - `src/styles.css`：主要样式。
 - `scripts/build-recipes-json.mjs`：flomo 文本批量导入脚本，支持笔记切分、括号感知切分、调味料自动识别、字段别名和做法提取；也支持从 App 导出 JSON 归一化。
-- `scripts/extract-flomo-images.mjs`：解析 flomo HTML 导出（`Jack Jiang的笔记.html` + `file/` 图片），按标题归一化匹配食谱与笔记，输出 `scripts/recipe-images/flomo-images.json`（多条命中取带图且最新的笔记，取第一张图）。
-- `scripts/apply-recipe-images.mjs`：按映射文件（默认 `search-results.json`，成品图用 `flomo-images.json`）下载或读取本地图片、sips 压缩（240px/q55）后以 base64 `image` 字段写入 `recipes.json`；可续跑、缓存于 `scripts/recipe-images/cache/`（已 gitignore）。
+- `scripts/extract-flomo-images.mjs`：解析 flomo HTML 导出（`Jack Jiang的笔记.html` + `file/` 图片），按标题归一化匹配食谱与笔记，输出映射文件 `scripts/recipe-images/flomo-images.json`（多条命中取带图且最新的笔记，取第一张图）。
+- `scripts/apply-recipe-images.mjs`：按映射文件下载或读取本地图片、sips 压缩（240px/q55）后以 base64 `image` 字段写入 `recipes.json`；可续跑。flomo 更新后的补图流程：先跑 extract 生成映射，再 `node scripts/apply-recipe-images.mjs scripts/recipe-images/flomo-images.json`；过程映射与缓存按 2026-09-05 清理约定不入库。
 - `recipes.json`：批量生成的正式食谱库（163 个食谱，其中 107 个已嵌 flomo 原做成品图），可直接在「数据 → 导入」导入。
 - `docs/supabase-schema.sql`：Supabase Postgres/RLS 表结构和 policy 草案。
 - `docs/auth-foundation-checklist.md`：账号基础设施手动验收清单。

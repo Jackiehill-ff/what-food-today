@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-05（清理：过程性文件与远端分支）
+
+- 删除 `scripts/recipe-images/` 全目录（搜索图映射、flomo 映射、41MB 图片缓存）、`dist/`、`android` 构建产物；相关脚本保留，补图流程改为 extract → apply 两步。
+- 删除远端 `origin/app-v1`，仅保留本地分支；`main` 为唯一远端分支。
+
 ## 2026-09-05（收尾：app-v1 合并 main）
 
 - 手机端验收通过；`app-v1` 合并到 `main` 并推送（GitHub Pages 自动部署新版）。
