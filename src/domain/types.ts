@@ -21,6 +21,8 @@ export type Recipe = {
   ingredients: Ingredient[];
   method: string;
   rawText?: string;
+  // 成品图，存压缩后的 data URL，保证离线可用
+  image?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -62,4 +64,6 @@ export type ShoppingListItem = {
   sourceCandidateId?: string;
   createdAt: number;
   checked: boolean;
+  // 最近一次勾选时间；排序时最新勾选的排最后
+  checkedAt?: number;
 };

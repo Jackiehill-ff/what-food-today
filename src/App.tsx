@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowUp,
   CalendarDays,
+  CalendarPlus,
   Check,
   ChevronDown,
   ChevronUp,
@@ -15,12 +16,14 @@ import {
   ExternalLink,
   FileInput,
   GripVertical,
+  ImagePlus,
   ImageUp,
   ListPlus,
   LogIn,
   LogOut,
   Menu,
   MessageSquare,
+  MoreVertical,
   Plus,
   Save,
   Search,
@@ -33,15 +36,23 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, DragEvent, FormEvent, ReactNode, SetStateAction } from "react";
+import type { Dispatch, DragEvent, FormEvent, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction } from "react";
 
 import { useAuthSession } from "./auth/useAuthSession";
 import { localAppStateRepository, migrateAppState } from "./data/appStateRepository";
 import { createAppStateBackup, loadSyncMetadata, saveSyncMetadata } from "./data/syncStorage";
 import { CATEGORIES, RECIPE_ITEM_DRAG_TYPE, UNIT_LABELS, UNIT_OPTIONS } from "./domain/constants";
 import { createId, createTimestamp } from "./domain/ids";
+import { readImageAsRecipeDataUrl } from "./domain/images";
 import { parseRecipeImportText } from "./domain/importParser";
-import { formatDayHeader, getPlannedRecipesForDate, getTodayKey, shiftDay } from "./domain/mealPlan";
+import {
+  formatDayHeader,
+  getPlannedRecipesForDate,
+  getTodayKey,
+  moveMealPlanEntry,
+  reorderMealPlanEntries,
+  shiftDay,
+} from "./domain/mealPlan";
 import {
   createBlankItem,
   createBlankRecipe,
@@ -49,7 +60,9 @@ import {
   getRecipeFoodIngredients,
   getRecipeIngredientSummary,
   getRecipeSeasonings,
+  getRecipeSeasoningSummary,
 } from "./domain/recipes";
+import { matchesAllKeywords, splitKeywords } from "./domain/search";
 import { sortShoppingItems } from "./domain/shopping";
 import type {
   AppState,
@@ -94,6 +107,8 @@ function App() {
   const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null);
   const [manualShoppingOpen, setManualShoppingOpen] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
+  const [menuPickerRecipeId, setMenuPickerRecipeId] = useState<string | null>(null);
+  const [planCardMenuRecipeId, setPlanCardMenuRecipeId] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -140,18 +155,19 @@ function App() {
   }, [recipeCategories, recipeCategory]);
 
   const filteredRecipes = useMemo(() => {
-    const keyword = recipeSearch.trim().toLowerCase();
+    const keywords = splitKeywords(recipeSearch);
     return appState.recipes.filter((recipe) => {
       if (recipeCategory && recipe.category !== recipeCategory) {
         return false;
       }
-      if (!keyword) {
+      if (!keywords.length) {
         return true;
       }
       const itemText = getItemsForRecipe(recipe)
         .map((item) => `${item.name} ${item.category}`)
         .join(" ");
-      return [recipe.title, recipe.category, recipe.method, recipe.rawText, itemText].join(" ").toLowerCase().includes(keyword);
+      const searchText = [recipe.title, recipe.category, recipe.method, recipe.rawText, itemText].join(" ").toLowerCase();
+      return matchesAllKeywords(searchText, keywords);
     });
   }, [appState.recipes, recipeCategory, recipeSearch]);
 
@@ -165,15 +181,19 @@ function App() {
   const plannedRecipeIds = useMemo(() => new Set(plannedRecipes.map((recipe) => recipe.id)), [plannedRecipes]);
 
   const planSearchResults = useMemo(() => {
-    const keyword = planSearch.trim().toLowerCase();
-    if (!keyword) {
+    const keywords = splitKeywords(planSearch);
+    if (!keywords.length) {
       return [];
     }
     return appState.recipes
       .filter((recipe) => !plannedRecipeIds.has(recipe.id))
-      .filter((recipe) =>
-        [recipe.title, recipe.category, recipe.method, recipe.rawText].join(" ").toLowerCase().includes(keyword),
-      )
+      .filter((recipe) => {
+        const itemText = getItemsForRecipe(recipe)
+          .map((item) => item.name)
+          .join(" ");
+        const searchText = [recipe.title, recipe.category, recipe.method, recipe.rawText, itemText].join(" ").toLowerCase();
+        return matchesAllKeywords(searchText, keywords);
+      })
       .slice(0, 8);
   }, [planSearch, appState.recipes, plannedRecipeIds]);
 
@@ -400,18 +420,31 @@ function App() {
     });
   };
 
-  const addRecipeToDate = (recipe: Recipe) => {
+  const addRecipeToDateKey = (recipe: Recipe, dateKey: string) => {
     updateState((state) => {
-      const exists = state.mealPlan.some((entry) => entry.date === planDate && entry.recipeId === recipe.id);
+      const exists = state.mealPlan.some((entry) => entry.date === dateKey && entry.recipeId === recipe.id);
       if (exists) {
         return state;
       }
       return {
         ...state,
-        mealPlan: [...state.mealPlan, { date: planDate, recipeId: recipe.id }],
+        mealPlan: [...state.mealPlan, { date: dateKey, recipeId: recipe.id }],
       };
     });
+  };
+
+  const addRecipeToDate = (recipe: Recipe) => {
+    addRecipeToDateKey(recipe, planDate);
     setPlanSearch("");
+    setPopup({ recipe, selected: {} });
+  };
+
+  // 食谱库卡片快捷加入今天/明天菜单，加入后同样弹出食材勾选
+  const addRecipeFromFeed = (recipe: Recipe, dateKey: string) => {
+    addRecipeToDateKey(recipe, dateKey);
+    setMenuPickerRecipeId(null);
+    setStatusMessage(`已把「${recipe.title}」加入${dateKey === getTodayKey() ? "今天" : "明天"}的菜单`);
+    window.setTimeout(() => setStatusMessage(""), 2200);
     setPopup({ recipe, selected: {} });
   };
 
@@ -419,6 +452,27 @@ function App() {
     updateState((state) => ({
       ...state,
       mealPlan: state.mealPlan.filter((entry) => !(entry.date === planDate && entry.recipeId === recipeId)),
+    }));
+    setPlanCardMenuRecipeId(null);
+  };
+
+  const moveRecipeToDate = (recipeId: string, toDate: string) => {
+    if (!toDate || toDate === planDate) {
+      return;
+    }
+    updateState((state) => ({
+      ...state,
+      mealPlan: moveMealPlanEntry(state.mealPlan, planDate, recipeId, toDate),
+    }));
+    setPlanCardMenuRecipeId(null);
+    setStatusMessage(`已改到 ${formatDayHeader(toDate)}`);
+    window.setTimeout(() => setStatusMessage(""), 2200);
+  };
+
+  const reorderPlannedRecipes = (orderedRecipeIds: string[]) => {
+    updateState((state) => ({
+      ...state,
+      mealPlan: reorderMealPlanEntries(state.mealPlan, planDate, orderedRecipeIds),
     }));
   };
 
@@ -480,8 +534,25 @@ function App() {
   const toggleShoppingItem = (id: string) => {
     updateState((state) => ({
       ...state,
-      shoppingItems: state.shoppingItems.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)),
+      shoppingItems: state.shoppingItems.map((item) =>
+        item.id === id
+          ? { ...item, checked: !item.checked, checkedAt: !item.checked ? Date.now() : undefined }
+          : item,
+      ),
     }));
+  };
+
+  const deleteCheckedShoppingItems = () => {
+    const count = appState.shoppingItems.filter((item) => item.checked).length;
+    if (!count || !window.confirm(`确定删除 ${count} 个已勾选的采购项？`)) {
+      return;
+    }
+    updateState((state) => ({
+      ...state,
+      shoppingItems: state.shoppingItems.filter((item) => !item.checked),
+    }));
+    setStatusMessage(`已删除 ${count} 个已勾选项`);
+    window.setTimeout(() => setStatusMessage(""), 2200);
   };
 
   const addManualShoppingItem = () => {
@@ -525,7 +596,7 @@ function App() {
   const buildShoppingText = () => {
     const lines = sortedShoppingItems.map((item) => {
       const amount = [item.amount, item.unit].filter(Boolean).join("");
-      return `- ${item.checked ? "[x]" : "[ ]"} ${item.name}${amount ? ` ${amount}` : ""} (${item.category})`;
+      return `- ${item.name}${amount ? ` ${amount}` : ""}`;
     });
     return lines.join("\n");
   };
@@ -718,31 +789,20 @@ function App() {
             {statusMessage && <div className="status-note">{statusMessage}</div>}
             <div className="day-header">{formatDayHeader(planDate)}</div>
 
-            <div className="day-menu">
-              {plannedRecipes.length === 0 ? (
-                <EmptyState title="这一天还没有安排" text="在下方搜索食谱，选择后会弹出食材勾选，可直接加入采购清单。" />
-              ) : (
-                plannedRecipes.map((recipe) => (
-                  <article className="recipe-card" key={recipe.id}>
-                    <div>
-                      <div className="recipe-card-title">
-                        <h3>{recipe.title}</h3>
-                      </div>
-                      <p>{recipe.category || "未分类"}</p>
-                      <RecipeMeta recipe={recipe} />
-                    </div>
-                    <div className="card-actions">
-                      <button className="icon-button" onClick={() => removeRecipeFromDate(recipe.id)} title="移除">
-                        <X size={16} />
-                      </button>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
+            <DayMenuList
+              recipes={plannedRecipes}
+              planDate={planDate}
+              openMenuRecipeId={planCardMenuRecipeId}
+              onToggleMenu={(recipeId) =>
+                setPlanCardMenuRecipeId((current) => (current === recipeId ? null : recipeId))
+              }
+              onMoveDate={moveRecipeToDate}
+              onRemove={removeRecipeFromDate}
+              onReorder={reorderPlannedRecipes}
+            />
 
             <div className="plan-picker">
-              <input value={planSearch} onChange={(event) => setPlanSearch(event.target.value)} placeholder="搜索食谱，添加到这一天（候选最多 8 个）" />
+              <input value={planSearch} onChange={(event) => setPlanSearch(event.target.value)} placeholder="想吃什么就告诉我，别客气！" />
               {planSearch.trim() &&
                 (planSearchResults.length === 0 ? (
                   <div className="plan-picker-empty">没有匹配的食谱</div>
@@ -827,6 +887,11 @@ function App() {
                           onToggle={() => setExpandedRecipeId((current) => (current === recipe.id ? null : recipe.id))}
                           onEdit={() => editRecipe(recipe)}
                           onDelete={() => deleteRecipe(recipe.id)}
+                          menuPickerOpen={menuPickerRecipeId === recipe.id}
+                          onToggleMenuPicker={() =>
+                            setMenuPickerRecipeId((current) => (current === recipe.id ? null : recipe.id))
+                          }
+                          onAddToDate={(dateKey) => addRecipeFromFeed(recipe, dateKey)}
                         />
                       ))
                     )}
@@ -911,6 +976,15 @@ function App() {
                     <Plus size={16} />
                     手动添加
                   </button>
+                  <button
+                    className="ghost-button danger"
+                    onClick={deleteCheckedShoppingItems}
+                    disabled={!appState.shoppingItems.some((item) => item.checked)}
+                    title="删除所有已勾选的采购项"
+                  >
+                    <Trash2 size={16} />
+                    批量删除
+                  </button>
                   <button className="primary-button" onClick={() => copyShoppingText()}>
                     <Copy size={16} />
                     复制清单
@@ -927,8 +1001,10 @@ function App() {
                   <label className={`shopping-item ${item.checked ? "checked" : ""}`} key={item.id}>
                     <input type="checkbox" checked={item.checked} onChange={() => toggleShoppingItem(item.id)} />
                     <span className="category-dot">{item.category}</span>
-                    <strong>{item.name}</strong>
-                    <span>{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
+                    <span className="shopping-item-main">
+                      <strong>{item.name}</strong>
+                      <span className="shopping-item-amount">{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
+                    </span>
                     <small>{item.sourceLabel}</small>
                   </label>
                 ))
@@ -1211,17 +1287,180 @@ function SectionHeader({
   );
 }
 
-function RecipeMeta({ recipe }: { recipe: Recipe }) {
-  const parts = [
-    getRecipeFoodIngredients(recipe).length ? `${getRecipeFoodIngredients(recipe).length} 食材` : "",
-    getRecipeSeasonings(recipe).length ? `${getRecipeSeasonings(recipe).length} 调味料` : "",
-  ].filter(Boolean);
+// 菜单计划卡片列表：支持按住手柄拖动排序（鼠标 + 触屏），
+// 每张卡片的「更改日期 / 删除」收纳在更多菜单里。
+function DayMenuList({
+  recipes,
+  planDate,
+  openMenuRecipeId,
+  onToggleMenu,
+  onMoveDate,
+  onRemove,
+  onReorder,
+}: {
+  recipes: Recipe[];
+  planDate: string;
+  openMenuRecipeId: string | null;
+  onToggleMenu: (recipeId: string) => void;
+  onMoveDate: (recipeId: string, toDate: string) => void;
+  onRemove: (recipeId: string) => void;
+  onReorder: (orderedRecipeIds: string[]) => void;
+}) {
+  const [order, setOrder] = useState<string[] | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const dragIdRef = useRef<string | null>(null);
 
-  if (!parts.length) {
-    return null;
+  const orderedRecipes = useMemo(() => {
+    if (!order) {
+      return recipes;
+    }
+    const byId = new Map(recipes.map((recipe) => [recipe.id, recipe]));
+    const ordered = order.flatMap((id) => {
+      const recipe = byId.get(id);
+      return recipe ? [recipe] : [];
+    });
+    recipes.forEach((recipe) => {
+      if (!order.includes(recipe.id)) {
+        ordered.push(recipe);
+      }
+    });
+    return ordered;
+  }, [recipes, order]);
+
+  const beginDrag = (event: ReactPointerEvent<HTMLButtonElement>, recipeId: string) => {
+    if (event.button !== 0) {
+      return;
+    }
+    dragIdRef.current = recipeId;
+    setDraggingId(recipeId);
+    setOrder(recipes.map((recipe) => recipe.id));
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const dragId = dragIdRef.current;
+    if (!dragId) {
+      return;
+    }
+    const overCard = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>("[data-plan-card-id]");
+    const overId = overCard?.dataset.planCardId;
+    if (!overId || overId === dragId) {
+      return;
+    }
+    setOrder((current) => {
+      if (!current) {
+        return current;
+      }
+      const from = current.indexOf(dragId);
+      const to = current.indexOf(overId);
+      if (from === -1 || to === -1) {
+        return current;
+      }
+      const next = [...current];
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      return next;
+    });
+    dragIdRef.current = overId;
+    setDraggingId(overId);
+  };
+
+  const endDrag = () => {
+    if (!dragIdRef.current) {
+      return;
+    }
+    const finalOrder = order;
+    dragIdRef.current = null;
+    setDraggingId(null);
+    setOrder(null);
+    if (finalOrder && finalOrder.some((id, index) => id !== recipes[index]?.id)) {
+      onReorder(finalOrder);
+    }
+  };
+
+  return (
+    <div
+      className="day-menu"
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onPointerLeave={endDrag}
+    >
+      {orderedRecipes.length === 0 ? (
+        <EmptyState title="这一天还没有安排" text="在下方搜索食谱，选择后会弹出食材勾选，可直接加入采购清单。" />
+      ) : (
+        orderedRecipes.map((recipe) => (
+          <article
+            className={`recipe-card plan-card ${draggingId === recipe.id ? "dragging" : ""}`}
+            key={recipe.id}
+            data-plan-card-id={recipe.id}
+          >
+            <button
+              className="drag-handle plan-drag-handle"
+              onPointerDown={(event) => beginDrag(event, recipe.id)}
+              title="拖动排序"
+              type="button"
+              aria-label={`拖动排序 ${recipe.title}`}
+            >
+              <GripVertical size={17} />
+            </button>
+            <RecipeThumb recipe={recipe} size="sm" />
+            <div className="plan-card-main">
+              <div className="recipe-card-title">
+                <h3>{recipe.title}</h3>
+              </div>
+              <p className="plan-card-ingredients">{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
+              {getRecipeSeasoningSummary(recipe) && (
+                <p className="plan-card-seasonings">调味：{getRecipeSeasoningSummary(recipe)}</p>
+              )}
+            </div>
+            <button
+              className="icon-button plan-card-more"
+              onClick={() => onToggleMenu(recipe.id)}
+              title="更多操作"
+              aria-label={`更多操作 ${recipe.title}`}
+            >
+              <MoreVertical size={16} />
+            </button>
+            {openMenuRecipeId === recipe.id && (
+              <div className="plan-card-menu">
+                <label className="plan-card-date">
+                  改到
+                  <input
+                    type="date"
+                    value={planDate}
+                    onChange={(event) => onMoveDate(recipe.id, event.target.value)}
+                  />
+                </label>
+                <button className="icon-button danger" onClick={() => onRemove(recipe.id)} title="删除" aria-label="删除">
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            )}
+          </article>
+        ))
+      )}
+    </div>
+  );
+}
+
+function RecipeThumb({ recipe, size = "lg" }: { recipe: Recipe; size?: "lg" | "sm" }) {
+  if (recipe.image) {
+    return (
+      <img
+        className={`recipe-thumb ${size}`}
+        src={recipe.image}
+        alt={`${recipe.title}成品图`}
+        loading="lazy"
+        draggable={false}
+      />
+    );
   }
-
-  return <span>{parts.join(" · ")}</span>;
+  return (
+    <div className={`recipe-thumb placeholder ${size}`} aria-hidden="true">
+      <Soup size={size === "lg" ? 24 : 18} />
+    </div>
+  );
 }
 
 function RecipeFeedCard({
@@ -1230,45 +1469,129 @@ function RecipeFeedCard({
   onToggle,
   onEdit,
   onDelete,
+  menuPickerOpen,
+  onToggleMenuPicker,
+  onAddToDate,
 }: {
   recipe: Recipe;
   expanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  menuPickerOpen: boolean;
+  onToggleMenuPicker: () => void;
+  onAddToDate: (dateKey: string) => void;
 }) {
   return (
     <article className={`recipe-card feed-card ${expanded ? "expanded" : ""}`}>
-      <button className="feed-card-main" onClick={onToggle} type="button" aria-expanded={expanded}>
-        <div className="feed-card-head">
-          <div>
+      <div className="feed-card-row">
+        <button className="feed-card-main" onClick={onToggle} type="button" aria-expanded={expanded}>
+          <RecipeThumb recipe={recipe} />
+          <div className="feed-card-text">
             <div className="recipe-card-title">
               <h3>{recipe.title}</h3>
             </div>
             <p>{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
           </div>
           {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </button>
+        <div className="feed-card-actions">
+          <div className="menu-add">
+            <button className="icon-button" onClick={onToggleMenuPicker} title="添加到菜单" aria-label="添加到菜单">
+              <CalendarPlus size={16} />
+            </button>
+            {menuPickerOpen && (
+              <div className="menu-add-options">
+                <button type="button" onClick={() => onAddToDate(getTodayKey())}>
+                  今天
+                </button>
+                <button type="button" onClick={() => onAddToDate(shiftDay(getTodayKey(), 1))}>
+                  明天
+                </button>
+              </div>
+            )}
+          </div>
+          <button className="icon-button" onClick={onEdit} title="编辑" aria-label="编辑">
+            <Edit3 size={16} />
+          </button>
+          <button className="icon-button danger" onClick={onDelete} title="删除" aria-label="删除">
+            <Trash2 size={16} />
+          </button>
         </div>
-      </button>
+      </div>
       {expanded && (
         <div className="feed-card-detail">
           <div className="feed-card-method">
             <h4>做法</h4>
             {recipe.method ? <p>{recipe.method}</p> : <p className="muted">暂无做法</p>}
           </div>
-          <div className="card-actions">
-            <button className="ghost-button" onClick={onEdit}>
-              <Edit3 size={16} />
-              编辑
-            </button>
-            <button className="ghost-button danger" onClick={onDelete}>
-              <Trash2 size={16} />
-              删除
-            </button>
-          </div>
         </div>
       )}
     </article>
+  );
+}
+
+function RecipeImageEditor({ draft, setDraft }: { draft: Recipe; setDraft: Dispatch<SetStateAction<Recipe>> }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const dataUrl = await readImageAsRecipeDataUrl(file);
+      setDraft((current) => ({ ...current, image: dataUrl }));
+    } catch {
+      setError("图片读取失败，请换一张试试");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="recipe-image-editor">
+      {draft.image ? (
+        <>
+          <img className="recipe-image-preview" src={draft.image} alt={`${draft.title || "食谱"}成品图`} />
+          <div className="recipe-image-actions">
+            <button className="ghost-button" onClick={() => fileInputRef.current?.click()} disabled={busy} type="button">
+              <ImageUp size={15} />
+              换一张
+            </button>
+            <button
+              className="ghost-button danger"
+              onClick={() => setDraft((current) => ({ ...current, image: "" }))}
+              disabled={busy}
+              type="button"
+            >
+              <Trash2 size={15} />
+              移除图片
+            </button>
+          </div>
+        </>
+      ) : (
+        <button className="recipe-image-upload" onClick={() => fileInputRef.current?.click()} disabled={busy} type="button">
+          <ImagePlus size={20} />
+          <span>{busy ? "处理中…" : "上传成品图"}</span>
+        </button>
+      )}
+      {error && <p className="recipe-image-error">{error}</p>}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          void handleFile(file);
+          event.target.value = "";
+        }}
+      />
+    </div>
   );
 }
 
@@ -1297,6 +1620,8 @@ function RecipeForm({
 }) {
   return (
     <div className="editor-panel">
+      <RecipeImageEditor draft={draft} setDraft={setDraft} />
+
       <div className="form-grid two">
         <label>
           食谱名称
@@ -1515,8 +1840,10 @@ function IngredientPopup({
               <label className={`shopping-item ${selected[item.id] ? "selected" : ""}`} key={item.id}>
                 <input type="checkbox" checked={Boolean(selected[item.id])} onChange={() => onToggleItem(item.id)} />
                 <span className="category-dot">{item.category}</span>
-                <strong>{item.name}</strong>
-                <span>{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
+                <span className="shopping-item-main">
+                  <strong>{item.name}</strong>
+                  <span className="shopping-item-amount">{[item.amount, item.unit].filter(Boolean).join("") || "适量"}</span>
+                </span>
               </label>
             ))
           )}

@@ -37,3 +37,41 @@ export const getPlannedRecipesForDate = (
       const recipe = recipesById.get(entry.recipeId);
       return recipe ? [recipe] : [];
     });
+
+// 只重排某一天内的菜谱顺序，其他日期条目保持原位
+export const reorderMealPlanEntries = (mealPlan: MealPlanEntry[], date: string, orderedRecipeIds: string[]): MealPlanEntry[] => {
+  const positions = mealPlan.reduce<number[]>((acc, entry, index) => {
+    if (entry.date === date) {
+      acc.push(index);
+    }
+    return acc;
+  }, []);
+  if (positions.length !== orderedRecipeIds.length) {
+    return mealPlan;
+  }
+  const order = new Map(orderedRecipeIds.map((recipeId, index) => [recipeId, index]));
+  const sorted = positions
+    .map((position) => mealPlan[position])
+    .sort((a, b) => (order.get(a.recipeId) ?? 0) - (order.get(b.recipeId) ?? 0));
+  const next = [...mealPlan];
+  positions.forEach((position, index) => {
+    next[position] = sorted[index];
+  });
+  return next;
+};
+
+// 把某天的菜谱移到另一天；目标日期已有时不重复添加
+export const moveMealPlanEntry = (mealPlan: MealPlanEntry[], fromDate: string, recipeId: string, toDate: string): MealPlanEntry[] => {
+  if (fromDate === toDate) {
+    return mealPlan;
+  }
+  const entry = mealPlan.find((item) => item.date === fromDate && item.recipeId === recipeId);
+  if (!entry) {
+    return mealPlan;
+  }
+  const withoutEntry = mealPlan.filter((item) => item !== entry);
+  if (mealPlan.some((item) => item.date === toDate && item.recipeId === recipeId)) {
+    return withoutEntry;
+  }
+  return [...withoutEntry, { date: toDate, recipeId }];
+};

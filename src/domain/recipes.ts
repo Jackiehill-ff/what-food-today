@@ -65,6 +65,7 @@ export const migrateRecipe = (
     ingredients,
     method: (recipe.method ?? recipe.steps ?? "").trim(),
     rawText: (recipe.rawText ?? recipe.notes ?? "").trim(),
+    image: typeof recipe.image === "string" ? recipe.image : "",
     createdAt: recipe.createdAt || now,
     updatedAt: recipe.updatedAt || now,
   };
@@ -81,5 +82,11 @@ export const getRecipeFoodIngredients = (recipe: Recipe) =>
 export const getRecipeIngredientSummary = (recipe: Recipe) =>
   recipe.ingredients
     .filter((item) => item.category === "食材" && item.name.trim())
+    .map((item) => item.name.trim())
+    .join(" ");
+
+export const getRecipeSeasoningSummary = (recipe: Recipe) =>
+  recipe.ingredients
+    .filter((item) => item.category === "调味料" && item.name.trim())
     .map((item) => item.name.trim())
     .join(" ");

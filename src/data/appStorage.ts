@@ -26,6 +26,7 @@ const migrateShoppingItem = (item: Partial<ShoppingListItem>): ShoppingListItem 
   sourceCandidateId: item.sourceCandidateId,
   createdAt: typeof item.createdAt === "number" ? item.createdAt : 0,
   checked: Boolean(item.checked),
+  checkedAt: typeof item.checkedAt === "number" ? item.checkedAt : undefined,
 });
 
 // 旧版按早餐/午餐/晚餐（slotId）安排；迁移时去掉 slotId，
