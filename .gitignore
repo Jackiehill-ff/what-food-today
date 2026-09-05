@@ -18,3 +18,4 @@ scripts/flomo-export-*.txt
 
 # WorkBuddy 本地记忆
 .workbuddy/
+.npm-cache/

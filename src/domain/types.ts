@@ -1,4 +1,4 @@
-export type Tab = "home" | "plan" | "import" | "recipes" | "shopping" | "me";
+export type Tab = "plan" | "import" | "recipes" | "shopping" | "me";
 
 export type Category = "食材" | "调味料";
 

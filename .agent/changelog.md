@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-03（导航改版 + 食谱信息流 + 采购弹窗 + 反馈 + 导入 OCR）
+
+- 取消首页：`Tab` 移除 `home`，默认进入「菜单计划」；删除首页组件 `TodayMenu` 与相关死样式（`.home-workspace`/`.today-menu*`）。
+- 导航改竖向可收放：桌面侧栏新增折叠按钮（`sidebarCollapsed` 折叠为 76px 图标窄栏，隐藏品牌文字/导航文字/账号/数据/统计）；移动端移除底部固定 Tab，改为左上角汉堡按钮（`.mobile-topbar`）+ 左侧抽屉（`.sidebar.open` + `.sidebar-backdrop`），抽屉内只保留品牌 + 竖向导航。
+- 食谱库改信息流优先：默认展示全部食谱卡片（名称 + 基本食材），轻点卡片展开完整做法与「编辑/删除」；「编辑」进入食谱编辑页（原 `RecipeForm`），左上角返回箭头回到信息流；新增「新增食谱」入口。`RecipeFeedCard` 新增，`RecipeForm` 复用为编辑页。
+- 采购清单：手动添加改为与「复制清单」同行的按钮，点击弹出原手动添加表单（弹窗内 名称/数量/单位/分类）；`ManualShoppingForm` 组件改为内联弹窗表单并删除。
+- 「我的」页新增反馈面板：提交到 GitHub Issues（`/issues/new` 预填标题正文）/ 复制反馈文本（`FeedbackPanel`）。
+- 导入中心新增「上传图片识别文字」：引入 `tesseract.js`（懒加载），本地 OCR 中英文（`chi_sim+eng`），结果填入粘贴文本框后再解析。
+- 可行性结论：粘贴网址自动抓取因浏览器跨域（CORS）限制，且小红书/抖音/Instagram/YouTube 等有登录墙与反爬，纯前端不可行，暂未实现（见 `.agent/decisions.md`）。
+- `npm run build` 通过；tesseract.js 代码分割为懒加载 chunk，worker/core/语言包运行时从 CDN 下载。
+- 重新打包 APK：`npx cap sync android` + `./gradlew assembleDebug`（JDK 21），根目录 `what-food-today.apk` 已更新（debug 签名，约 4.35MB）。
+
 ## 2026-09-01（首页菜单展示 + 食材排序 + 卡片摘要）
 
 - 首页"今天的菜单"改为与食谱库相同的卡片展示（菜名 + 食材名称），保留空态"去安排"入口；卡片"查看食谱"进入编辑。

@@ -1,18 +1,26 @@
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   CalendarDays,
   Check,
+  ChevronDown,
+  ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
   ClipboardList,
   Copy,
   Download,
   Edit3,
+  ExternalLink,
   FileInput,
   GripVertical,
-  Home,
+  ImageUp,
   ListPlus,
   LogIn,
   LogOut,
+  Menu,
+  MessageSquare,
   Plus,
   Save,
   Search,
@@ -58,7 +66,7 @@ function App() {
   const auth = useAuthSession();
   const [appState, setAppState] = useState<AppState>(() => localAppStateRepository.load());
   const [syncMetadata, setSyncMetadata] = useState(() => loadSyncMetadata());
-  const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [activeTab, setActiveTab] = useState<Tab>("plan");
   const [planDate, setPlanDate] = useState(() => getTodayKey());
   const [recipeDraft, setRecipeDraft] = useState<Recipe>(() => createBlankRecipe());
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
@@ -80,6 +88,13 @@ function App() {
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [planSearch, setPlanSearch] = useState("");
   const [popup, setPopup] = useState<{ recipe: Recipe; selected: Record<string, boolean> } | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [recipeView, setRecipeView] = useState<"feed" | "edit">("feed");
+  const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null);
+  const [manualShoppingOpen, setManualShoppingOpen] = useState(false);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     localAppStateRepository.save(appState);
@@ -145,11 +160,6 @@ function App() {
     [appState.mealPlan, planDate, recipesById],
   );
 
-  const todayRecipes = useMemo(
-    () => getPlannedRecipesForDate(appState.mealPlan, getTodayKey(), recipesById),
-    [appState.mealPlan, recipesById],
-  );
-
   const sortedShoppingItems = useMemo(() => sortShoppingItems(appState.shoppingItems), [appState.shoppingItems]);
 
   const plannedRecipeIds = useMemo(() => new Set(plannedRecipes.map((recipe) => recipe.id)), [plannedRecipes]);
@@ -172,6 +182,11 @@ function App() {
 
   const updateState = (updater: (state: AppState) => AppState) => {
     setAppState((current) => updater(current));
+  };
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setDrawerOpen(false);
   };
 
   const saveRecipe = () => {
@@ -201,6 +216,8 @@ function App() {
     });
     setRecipeDraft(createBlankRecipe());
     setEditingRecipeId(null);
+    setRecipeView("feed");
+    setExpandedRecipeId(null);
   };
 
   const editRecipe = (recipe: Recipe) => {
@@ -209,7 +226,23 @@ function App() {
       ingredients: recipe.ingredients.length ? recipe.ingredients : [createBlankItem()],
     });
     setEditingRecipeId(recipe.id);
+    setRecipeView("edit");
+    setExpandedRecipeId(null);
     setActiveTab("recipes");
+  };
+
+  const startNewRecipe = () => {
+    setRecipeDraft(createBlankRecipe());
+    setEditingRecipeId(null);
+    setRecipeView("edit");
+    setActiveTab("recipes");
+  };
+
+  const backToRecipeFeed = () => {
+    setRecipeDraft(createBlankRecipe());
+    setEditingRecipeId(null);
+    setRecipeView("feed");
+    setExpandedRecipeId(null);
   };
 
   const deleteRecipe = (recipeId: string) => {
@@ -218,9 +251,13 @@ function App() {
       recipes: state.recipes.filter((recipe) => recipe.id !== recipeId),
       mealPlan: state.mealPlan.filter((entry) => entry.recipeId !== recipeId),
     }));
+    if (expandedRecipeId === recipeId) {
+      setExpandedRecipeId(null);
+    }
     if (editingRecipeId === recipeId) {
       setEditingRecipeId(null);
       setRecipeDraft(createBlankRecipe());
+      setRecipeView("feed");
     }
   };
 
@@ -477,6 +514,14 @@ function App() {
     }));
   };
 
+  const addManualShoppingItemAndClose = () => {
+    if (!manualItem.name.trim()) {
+      return;
+    }
+    addManualShoppingItem();
+    setManualShoppingOpen(false);
+  };
+
   const buildShoppingText = () => {
     const lines = sortedShoppingItems.map((item) => {
       const amount = [item.amount, item.unit].filter(Boolean).join("");
@@ -508,11 +553,6 @@ function App() {
       return next;
     });
     setBackupStatus("已创建本地备份");
-  };
-
-  const openPlanForToday = () => {
-    setPlanDate(getTodayKey());
-    setActiveTab("plan");
   };
 
   const exportData = async () => {
@@ -567,21 +607,48 @@ function App() {
     }
   };
 
+  const recognizeImageText = async (file: File) => {
+    setOcrBusy(true);
+    setImportStatus("");
+    try {
+      const { recognize } = await import("tesseract.js");
+      const { data } = await recognize(file, "chi_sim+eng");
+      const text = (data.text || "").trim();
+      if (!text) {
+        setImportStatus("未识别到文字，请换一张更清晰的图片");
+      } else {
+        setImportText((current) => (current.trim() ? `${current.trim()}\n\n${text}` : text));
+        setImportStatus("已识别文字，请检查后点击「解析」");
+      }
+    } catch {
+      setImportStatus("识别失败：请确认网络可用后重试（首次识别需下载语言包）");
+    } finally {
+      setOcrBusy(false);
+    }
+  };
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <aside className={`sidebar ${sidebarCollapsed ? "collapsed" : ""} ${drawerOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">
             <Soup size={26} />
           </div>
-          <div>
+          <div className="brand-text">
             <h1>今天吃啥？</h1>
             <p>菜单计划和采购清单</p>
           </div>
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            title={sidebarCollapsed ? "展开导航" : "收起导航"}
+          >
+            {sidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+          </button>
         </div>
 
         <nav className="nav-tabs" aria-label="主导航">
-          <NavTabs activeTab={activeTab} onChange={setActiveTab} />
+          <NavTabs activeTab={activeTab} onChange={handleTabChange} />
         </nav>
 
         <AccountPanel
@@ -615,17 +682,19 @@ function App() {
         </div>
       </aside>
 
+      <div
+        className={`sidebar-backdrop ${drawerOpen ? "visible" : ""}`}
+        onClick={() => setDrawerOpen(false)}
+        aria-hidden="true"
+      />
+
       <main className="main-content">
-        {activeTab === "home" && (
-          <section className="workspace home-workspace">
-            <SectionHeader icon={<Home size={22} />} title="今天的菜单" />
-            <TodayMenu
-              todayRecipes={todayRecipes}
-              onOpenPlan={openPlanForToday}
-              onOpenRecipe={editRecipe}
-            />
-          </section>
-        )}
+        <div className="mobile-topbar">
+          <button className="icon-button" onClick={() => setDrawerOpen(true)} title="打开导航" aria-label="打开导航">
+            <Menu size={20} />
+          </button>
+          <span>今天吃啥？</span>
+        </div>
 
         {activeTab === "plan" && (
           <section className="workspace">
@@ -692,71 +761,79 @@ function App() {
 
         {activeTab === "recipes" && (
           <section className="workspace">
-            <SectionHeader icon={<Utensils size={22} />} title="食谱库" />
-            <div className="recipe-layout">
-              <RecipeForm
-                draft={recipeDraft}
-                editingRecipeId={editingRecipeId}
-                setDraft={setRecipeDraft}
-                saveRecipe={saveRecipe}
-                cancelEdit={() => {
-                  setRecipeDraft(createBlankRecipe());
-                  setEditingRecipeId(null);
-                }}
-                updateRecipeItem={updateRecipeItem}
-                addRecipeItem={addRecipeItem}
-                removeRecipeItem={removeRecipeItem}
-                moveRecipeItem={moveRecipeItem}
-                reorderRecipeItem={reorderRecipeItem}
-              />
-
-              <div className="recipe-list-panel">
-                <div className="search-box">
-                  <Search size={17} />
-                  <input value={recipeSearch} onChange={(event) => setRecipeSearch(event.target.value)} placeholder="搜索标题、分类、食材" />
+            {recipeView === "edit" ? (
+              <>
+                <div className="recipe-edit-header">
+                  <button className="icon-button" onClick={backToRecipeFeed} title="返回食谱信息流" aria-label="返回食谱信息流">
+                    <ArrowLeft size={18} />
+                  </button>
+                  <h2>{editingRecipeId ? "编辑食谱" : "新增食谱"}</h2>
                 </div>
-                {recipeCategories.length > 0 && (
-                  <div className="category-filters">
-                    <button className={recipeCategory === "" ? "active" : ""} onClick={() => setRecipeCategory("")}>
-                      全部
+                <RecipeForm
+                  draft={recipeDraft}
+                  editingRecipeId={editingRecipeId}
+                  setDraft={setRecipeDraft}
+                  saveRecipe={saveRecipe}
+                  cancelEdit={backToRecipeFeed}
+                  updateRecipeItem={updateRecipeItem}
+                  addRecipeItem={addRecipeItem}
+                  removeRecipeItem={removeRecipeItem}
+                  moveRecipeItem={moveRecipeItem}
+                  reorderRecipeItem={reorderRecipeItem}
+                />
+              </>
+            ) : (
+              <>
+                <SectionHeader
+                  icon={<Utensils size={22} />}
+                  title="食谱库"
+                  action={
+                    <button className="primary-button" onClick={startNewRecipe}>
+                      <Plus size={16} />
+                      新增食谱
                     </button>
-                    {recipeCategories.map((category) => (
-                      <button
-                        className={recipeCategory === category ? "active" : ""}
-                        key={category}
-                        onClick={() => setRecipeCategory(category)}
-                      >
-                        {category}
-                      </button>
-                    ))}
+                  }
+                />
+                <div className="recipe-feed-panel">
+                  <div className="search-box">
+                    <Search size={17} />
+                    <input value={recipeSearch} onChange={(event) => setRecipeSearch(event.target.value)} placeholder="搜索标题、分类、食材" />
                   </div>
-                )}
-                <div className="recipe-list">
-                  {filteredRecipes.length === 0 ? (
-                    <EmptyState title="还没有食谱" text="先新增一道常做菜，再把它安排到菜单计划里。" />
-                  ) : (
-                    filteredRecipes.map((recipe) => (
-                      <article className="recipe-card" key={recipe.id}>
-                        <div>
-                          <div className="recipe-card-title">
-                            <h3>{recipe.title}</h3>
-                          </div>
-                          <p>{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
-                        </div>
-                        <div className="card-actions">
-                          <button className="icon-button" onClick={() => editRecipe(recipe)} title="编辑">
-                            <Edit3 size={16} />
-                          </button>
-                          <button className="icon-button danger" onClick={() => deleteRecipe(recipe.id)} title="删除">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </article>
-                    ))
+                  {recipeCategories.length > 0 && (
+                    <div className="category-filters">
+                      <button className={recipeCategory === "" ? "active" : ""} onClick={() => setRecipeCategory("")}>
+                        全部
+                      </button>
+                      {recipeCategories.map((category) => (
+                        <button
+                          className={recipeCategory === category ? "active" : ""}
+                          key={category}
+                          onClick={() => setRecipeCategory(category)}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
                   )}
+                  <div className="recipe-list">
+                    {filteredRecipes.length === 0 ? (
+                      <EmptyState title="还没有食谱" text="点右上角「新增食谱」创建一道常做菜，或到导入中心导入。" />
+                    ) : (
+                      filteredRecipes.map((recipe) => (
+                        <RecipeFeedCard
+                          key={recipe.id}
+                          recipe={recipe}
+                          expanded={expandedRecipeId === recipe.id}
+                          onToggle={() => setExpandedRecipeId((current) => (current === recipe.id ? null : recipe.id))}
+                          onEdit={() => editRecipe(recipe)}
+                          onDelete={() => deleteRecipe(recipe.id)}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </section>
         )}
 
@@ -789,7 +866,27 @@ function App() {
                     <FileInput size={16} />
                     解析
                   </button>
+                  <button className="ghost-button" onClick={() => imageInputRef.current?.click()} disabled={ocrBusy}>
+                    <ImageUp size={16} />
+                    {ocrBusy ? "识别中…" : "上传图片识别文字"}
+                  </button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        recognizeImageText(file);
+                      }
+                      event.target.value = "";
+                    }}
+                  />
                 </div>
+                <p className="import-hint">
+                  可上传食谱截图自动识别文字填入上方文本框（本地识别，首次需联网下载中文语言包）；粘贴网址抓取因浏览器跨域限制暂不支持。
+                </p>
               </div>
 
               <ImportPreview
@@ -809,14 +906,19 @@ function App() {
               icon={<ClipboardList size={22} />}
               title="采购清单"
               action={
-                <button className="primary-button" onClick={() => copyShoppingText()}>
-                  <Copy size={16} />
-                  复制清单
-                </button>
+                <div className="header-actions">
+                  <button className="ghost-button" onClick={() => setManualShoppingOpen(true)}>
+                    <Plus size={16} />
+                    手动添加
+                  </button>
+                  <button className="primary-button" onClick={() => copyShoppingText()}>
+                    <Copy size={16} />
+                    复制清单
+                  </button>
+                </div>
               }
             />
             {statusMessage && <div className="status-note">{statusMessage}</div>}
-            <ManualShoppingForm manualItem={manualItem} setManualItem={setManualItem} addManualShoppingItem={addManualShoppingItem} />
             <div className="shopping-list">
               {sortedShoppingItems.length === 0 ? (
                 <EmptyState title="暂无采购项" text="安排食谱时通过弹窗勾选缺少的食材，或手动添加采购项。" />
@@ -832,6 +934,66 @@ function App() {
                 ))
               )}
             </div>
+            {manualShoppingOpen && (
+              <div className="modal-overlay" onClick={() => setManualShoppingOpen(false)}>
+                <div className="modal" onClick={(event) => event.stopPropagation()}>
+                  <header className="modal-header">
+                    <div>
+                      <h3>手动添加</h3>
+                      <p>加入统一的采购清单</p>
+                    </div>
+                    <button className="icon-button" onClick={() => setManualShoppingOpen(false)} title="关闭">
+                      <X size={16} />
+                    </button>
+                  </header>
+                  <div className="manual-shopping-grid">
+                    <label>
+                      采购项
+                      <input
+                        value={manualItem.name}
+                        onChange={(event) => setManualItem((current) => ({ ...current, name: event.target.value }))}
+                        placeholder="例如 番茄"
+                      />
+                    </label>
+                    <label>
+                      数量
+                      <input
+                        value={manualItem.amount}
+                        onChange={(event) => setManualItem((current) => ({ ...current, amount: event.target.value }))}
+                        placeholder="数量"
+                      />
+                    </label>
+                    <label>
+                      单位
+                      <input
+                        value={manualItem.unit}
+                        onChange={(event) => setManualItem((current) => ({ ...current, unit: event.target.value }))}
+                        placeholder="单位"
+                      />
+                    </label>
+                    <label>
+                      分类
+                      <select
+                        value={manualItem.category}
+                        onChange={(event) => setManualItem((current) => ({ ...current, category: event.target.value as Category }))}
+                      >
+                        {CATEGORIES.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <footer className="modal-footer">
+                    <button className="primary-button" onClick={addManualShoppingItemAndClose} disabled={!manualItem.name.trim()}>
+                      <Plus size={16} />
+                      添加
+                    </button>
+                  </footer>
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -857,14 +1019,11 @@ function App() {
                 createLocalBackup={createLocalBackup}
               />
               <DataPanel dataStatus={dataStatus} onExport={exportData} onImport={importData} />
+              <FeedbackPanel />
             </div>
           </section>
         )}
       </main>
-
-      <nav className="mobile-tabs" aria-label="主导航（移动端）">
-        <NavTabs activeTab={activeTab} onChange={setActiveTab} compact />
-      </nav>
 
       {popup && (
         <IngredientPopup
@@ -880,32 +1039,28 @@ function App() {
   );
 }
 
-function NavTabs({ activeTab, onChange, compact = false }: { activeTab: Tab; onChange: (tab: Tab) => void; compact?: boolean }) {
+function NavTabs({ activeTab, onChange }: { activeTab: Tab; onChange: (tab: Tab) => void }) {
   return (
     <>
-      <button className={activeTab === "home" ? "active" : ""} onClick={() => onChange("home")}>
-        <Home size={compact ? 19 : 18} />
-        首页
-      </button>
       <button className={activeTab === "plan" ? "active" : ""} onClick={() => onChange("plan")}>
-        <CalendarDays size={compact ? 19 : 18} />
-        {compact ? "菜单" : "菜单计划"}
+        <CalendarDays size={18} />
+        <span>菜单计划</span>
       </button>
       <button className={activeTab === "import" ? "active" : ""} onClick={() => onChange("import")}>
-        <FileInput size={compact ? 19 : 18} />
-        {compact ? "导入" : "导入中心"}
+        <FileInput size={18} />
+        <span>导入中心</span>
       </button>
       <button className={activeTab === "recipes" ? "active" : ""} onClick={() => onChange("recipes")}>
-        <Utensils size={compact ? 19 : 18} />
-        {compact ? "食谱" : "食谱库"}
+        <Utensils size={18} />
+        <span>食谱库</span>
       </button>
       <button className={activeTab === "shopping" ? "active" : ""} onClick={() => onChange("shopping")}>
-        <ShoppingBasket size={compact ? 19 : 18} />
-        {compact ? "采购" : "采购清单"}
+        <ShoppingBasket size={18} />
+        <span>采购清单</span>
       </button>
       <button className={activeTab === "me" ? "active" : ""} onClick={() => onChange("me")}>
-        <UserRound size={compact ? 19 : 18} />
-        我的
+        <UserRound size={18} />
+        <span>我的</span>
       </button>
     </>
   );
@@ -1069,45 +1224,51 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   return <span>{parts.join(" · ")}</span>;
 }
 
-function TodayMenu({
-  todayRecipes,
-  onOpenPlan,
-  onOpenRecipe,
+function RecipeFeedCard({
+  recipe,
+  expanded,
+  onToggle,
+  onEdit,
+  onDelete,
 }: {
-  todayRecipes: Recipe[];
-  onOpenPlan: () => void;
-  onOpenRecipe: (recipe: Recipe) => void;
+  recipe: Recipe;
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
-  if (todayRecipes.length === 0) {
-    return (
-      <div className="today-menu-empty">
-        <EmptyState title="今天还没有安排" text="去菜单计划里安排今天的菜，选完后可直接勾选缺少的食材。" />
-        <button className="primary-button" onClick={onOpenPlan}>
-          <CalendarDays size={16} />
-          去安排今天的菜单
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="today-menu">
-      {todayRecipes.map((recipe) => (
-        <article className="recipe-card" key={recipe.id}>
+    <article className={`recipe-card feed-card ${expanded ? "expanded" : ""}`}>
+      <button className="feed-card-main" onClick={onToggle} type="button" aria-expanded={expanded}>
+        <div className="feed-card-head">
           <div>
             <div className="recipe-card-title">
               <h3>{recipe.title}</h3>
             </div>
             <p>{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
           </div>
+          {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        </div>
+      </button>
+      {expanded && (
+        <div className="feed-card-detail">
+          <div className="feed-card-method">
+            <h4>做法</h4>
+            {recipe.method ? <p>{recipe.method}</p> : <p className="muted">暂无做法</p>}
+          </div>
           <div className="card-actions">
-            <button className="icon-button" onClick={() => onOpenRecipe(recipe)} title="查看食谱">
-              <Utensils size={16} />
+            <button className="ghost-button" onClick={onEdit}>
+              <Edit3 size={16} />
+              编辑
+            </button>
+            <button className="ghost-button danger" onClick={onDelete}>
+              <Trash2 size={16} />
+              删除
             </button>
           </div>
-        </article>
-      ))}
-    </div>
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -1440,38 +1601,51 @@ function ImportPreview({
   );
 }
 
-function ManualShoppingForm({
-  manualItem,
-  setManualItem,
-  addManualShoppingItem,
-}: {
-  manualItem: { name: string; amount: string; unit: string; category: Category };
-  setManualItem: Dispatch<SetStateAction<{ name: string; amount: string; unit: string; category: Category }>>;
-  addManualShoppingItem: () => void;
-}) {
+function FeedbackPanel() {
+  const [feedbackText, setFeedbackText] = useState("");
+  const [copied, setCopied] = useState(false);
+  const feedbackBody = feedbackText.trim();
+
+  const openGitHubIssue = () => {
+    const title = "App 反馈";
+    const body = feedbackBody || "（请在此描述你的建议或遇到的问题）";
+    const url = `https://github.com/Jackiehill-ff/What-food-today/issues/new?title=${encodeURIComponent(
+      title,
+    )}&body=${encodeURIComponent(body)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const copyFeedback = async () => {
+    if (!feedbackBody) {
+      return;
+    }
+    await navigator.clipboard.writeText(feedbackBody);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+
   return (
-    <section className="shopping-panel manual-shopping">
-      <header>
-        <div>
-          <h3>手动添加</h3>
-          <p>加入统一的采购清单。</p>
-        </div>
-        <button className="primary-button" onClick={addManualShoppingItem} disabled={!manualItem.name.trim()}>
-          <Plus size={16} />
-          添加
+    <section className="account-panel feedback-panel">
+      <div className="account-heading">
+        <MessageSquare size={17} />
+        <span>反馈</span>
+      </div>
+      <p>写下建议或问题，提交到 GitHub Issues（公开仓库），或复制后自行发送。</p>
+      <textarea
+        value={feedbackText}
+        onChange={(event) => setFeedbackText(event.target.value)}
+        rows={3}
+        placeholder="描述建议或遇到的问题…"
+      />
+      <div className="account-actions">
+        <button className="ghost-button" onClick={openGitHubIssue} disabled={!feedbackBody}>
+          <ExternalLink size={15} />
+          提交到 GitHub
         </button>
-      </header>
-      <div className="manual-shopping-grid">
-        <input value={manualItem.name} onChange={(event) => setManualItem((current) => ({ ...current, name: event.target.value }))} placeholder="采购项" />
-        <input value={manualItem.amount} onChange={(event) => setManualItem((current) => ({ ...current, amount: event.target.value }))} placeholder="数量" />
-        <input value={manualItem.unit} onChange={(event) => setManualItem((current) => ({ ...current, unit: event.target.value }))} placeholder="单位" />
-        <select value={manualItem.category} onChange={(event) => setManualItem((current) => ({ ...current, category: event.target.value as Category }))}>
-          {CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
+        <button className="ghost-button" onClick={copyFeedback} disabled={!feedbackBody}>
+          <Copy size={15} />
+          {copied ? "已复制" : "复制"}
+        </button>
       </div>
     </section>
   );
