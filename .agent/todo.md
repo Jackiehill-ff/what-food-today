@@ -23,7 +23,7 @@
 - [x] `npm run build` 通过；浏览器冒烟测试通过（搜索/弹窗/改日期/拖拽/勾选排序/批量删除/复制/图片渲染）。
 - [x] 新增 `scripts/apply-recipe-images.mjs`：下载图片 → sips 压缩（240px/q55，超 40KB 自动二次压缩）→ base64 写入 `recipes.json`；可续跑、带缓存、支持本地路径与自定义映射文件。
 - [x] 成品图最终采用 flomo 原图（107/163）；早前网络搜索图已被替换，`search-results.json` 仅留作参考。
-- [ ] 用户在手机端导入 recipes.json 验证图片显示与存储占用。
+- [x] 用户在手机端导入 recipes.json 验证通过（2026-09-05 确认无误）。
 
 ## 已完成（2026-09-03 UI/交互改版 + 导入 OCR）
 
