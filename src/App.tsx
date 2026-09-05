@@ -60,7 +60,6 @@ import {
   getRecipeFoodIngredients,
   getRecipeIngredientSummary,
   getRecipeSeasonings,
-  getRecipeSeasoningSummary,
 } from "./domain/recipes";
 import { matchesAllKeywords, splitKeywords } from "./domain/search";
 import { sortShoppingItems } from "./domain/shopping";
@@ -1409,10 +1408,14 @@ function DayMenuList({
               <div className="recipe-card-title">
                 <h3>{recipe.title}</h3>
               </div>
-              <p className="plan-card-ingredients">{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
-              {getRecipeSeasoningSummary(recipe) && (
-                <p className="plan-card-seasonings">调味：{getRecipeSeasoningSummary(recipe)}</p>
-              )}
+              <p className="plan-card-ingredients">
+                {[
+                  getRecipeFoodIngredients(recipe).length ? `${getRecipeFoodIngredients(recipe).length} 食材` : "",
+                  getRecipeSeasonings(recipe).length ? `${getRecipeSeasonings(recipe).length} 调味料` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "暂无食材"}
+              </p>
             </div>
             <button
               className="icon-button plan-card-more"
@@ -1484,46 +1487,44 @@ function RecipeFeedCard({
 }) {
   return (
     <article className={`recipe-card feed-card ${expanded ? "expanded" : ""}`}>
-      <div className="feed-card-row">
-        <button className="feed-card-main" onClick={onToggle} type="button" aria-expanded={expanded}>
-          <RecipeThumb recipe={recipe} />
-          <div className="feed-card-text">
-            <div className="recipe-card-title">
-              <h3>{recipe.title}</h3>
-            </div>
-            <p>{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
+      <button className="feed-card-main" onClick={onToggle} type="button" aria-expanded={expanded}>
+        <RecipeThumb recipe={recipe} />
+        <div className="feed-card-text">
+          <div className="recipe-card-title">
+            <h3>{recipe.title}</h3>
           </div>
-          {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </button>
-        <div className="feed-card-actions">
-          <div className="menu-add">
-            <button className="icon-button" onClick={onToggleMenuPicker} title="添加到菜单" aria-label="添加到菜单">
-              <CalendarPlus size={16} />
-            </button>
-            {menuPickerOpen && (
-              <div className="menu-add-options">
-                <button type="button" onClick={() => onAddToDate(getTodayKey())}>
-                  今天
-                </button>
-                <button type="button" onClick={() => onAddToDate(shiftDay(getTodayKey(), 1))}>
-                  明天
-                </button>
-              </div>
-            )}
-          </div>
-          <button className="icon-button" onClick={onEdit} title="编辑" aria-label="编辑">
-            <Edit3 size={16} />
-          </button>
-          <button className="icon-button danger" onClick={onDelete} title="删除" aria-label="删除">
-            <Trash2 size={16} />
-          </button>
+          <p>{getRecipeIngredientSummary(recipe) || "暂无食材"}</p>
         </div>
-      </div>
+        {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+      </button>
       {expanded && (
         <div className="feed-card-detail">
           <div className="feed-card-method">
             <h4>做法</h4>
             {recipe.method ? <p>{recipe.method}</p> : <p className="muted">暂无做法</p>}
+          </div>
+          <div className="feed-card-actions">
+            <div className="menu-add">
+              <button className="icon-button" onClick={onToggleMenuPicker} title="添加到菜单" aria-label="添加到菜单">
+                <CalendarPlus size={16} />
+              </button>
+              {menuPickerOpen && (
+                <div className="menu-add-options">
+                  <button type="button" onClick={() => onAddToDate(getTodayKey())}>
+                    今天
+                  </button>
+                  <button type="button" onClick={() => onAddToDate(shiftDay(getTodayKey(), 1))}>
+                    明天
+                  </button>
+                </div>
+              )}
+            </div>
+            <button className="icon-button" onClick={onEdit} title="编辑" aria-label="编辑">
+              <Edit3 size={16} />
+            </button>
+            <button className="icon-button danger" onClick={onDelete} title="删除" aria-label="删除">
+              <Trash2 size={16} />
+            </button>
           </div>
         </div>
       )}

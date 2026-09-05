@@ -1,11 +1,13 @@
-// 把 scripts/recipe-images/search-results.json 里搜到的成品图
-// 下载 → 压缩（macOS sips，最长边 320px / JPEG q62）→ base64 写入 recipes.json。
+// 把图片映射文件里搜到的成品图
+// 下载（或本地路径直接读取）→ 压缩（macOS sips，最长边 240px / JPEG q55）→ base64 写入 recipes.json。
 //
 // 可续跑：已有 image 的食谱跳过；原图和处理后小图缓存在 scripts/recipe-images/cache/。
-// 后续想补图：往 search-results.json 加 { "食谱名": { url } } 再跑一次即可。
+// 补图：往映射文件加 { "食谱名": { url } } 再跑一次即可。
 //
-// 用法：node scripts/apply-recipe-images.mjs
+// 用法：node scripts/apply-recipe-images.mjs [映射文件.json]
+//       （默认 scripts/recipe-images/search-results.json；flomo 提取结果用 flomo-images.json）
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -13,6 +15,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const RECIPES_PATH = join(ROOT, "recipes.json");
 const IMAGES_DIR = join(ROOT, "scripts", "recipe-images");
 const CACHE_DIR = join(IMAGES_DIR, "cache");
+const RESULTS_PATH = process.argv[2] ? process.argv[2].replace(/^\/+/, "/") : join(IMAGES_DIR, "search-results.json");
 
 // 240px 缩略图：卡片 84px / 计划卡 56px / 编辑页预览 168px 都够用，
 // 且 163 张全嵌 base64 后 recipes.json 导入 localStorage（≈2.6M 字符上限）不会爆配额。
@@ -44,11 +47,20 @@ const compress = (source, dest, maxSide = MAX_SIDE, quality = JPEG_QUALITY) => {
 
 const cacheName = (url) => url.split("/").pop() || "img";
 
-const processImage = async (url) => {
-  const rawPath = join(CACHE_DIR, `raw-${cacheName(url)}`);
-  const jpgPath = join(CACHE_DIR, `${cacheName(url).replace(/\.[a-z0-9]+$/i, "")}.jpg`);
+// 缓存键带上路径哈希：flomo 不同日期目录里可能有同名文件
+const cacheKey = (url) => {
+  const hash = createHash("md5").update(url).digest("hex").slice(0, 8);
+  return `${cacheName(url).replace(/\.[a-z0-9]+$/i, "")}-${hash}`;
+};
 
-  if (!existsSync(rawPath)) {
+const isLocalPath = (url) => url.startsWith("/");
+
+const processImage = async (url) => {
+  // 本地路径（flomo 导出图片）直接作原图，无需下载
+  const rawPath = isLocalPath(url) ? url : join(CACHE_DIR, `raw-${cacheKey(url)}`);
+  const jpgPath = join(CACHE_DIR, `${cacheKey(url)}.jpg`);
+
+  if (!isLocalPath(url) && !existsSync(rawPath)) {
     await download(url, rawPath);
   }
   if (!existsSync(jpgPath)) {
@@ -77,7 +89,7 @@ const processImage = async (url) => {
 const main = async () => {
   mkdirSync(CACHE_DIR, { recursive: true });
   const data = JSON.parse(readFileSync(RECIPES_PATH, "utf8"));
-  const results = JSON.parse(readFileSync(join(IMAGES_DIR, "search-results.json"), "utf8"));
+  const results = JSON.parse(readFileSync(RESULTS_PATH, "utf8"));
 
   let done = 0;
   let failed = 0;

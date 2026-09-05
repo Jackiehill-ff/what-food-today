@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-05（分支 app-v1 · 第二轮：flomo 成品图 + 三处 UI 微调）
+
+- 成品图改用 flomo 笔记原图：新增 `scripts/extract-flomo-images.mjs` 解析 flomo HTML 导出（`~/Downloads/flomo@Jack Jiang-20260901`），按标题归一化匹配食谱与笔记，多条命中取「带图且最新」的笔记第一张图，输出 `scripts/recipe-images/flomo-images.json`；`apply-recipe-images.mjs` 支持指定映射文件和本地图片路径（缓存键加路径哈希防同名冲突）。`recipes.json` 清空原搜索图后嵌入 **107/163** 张 flomo 原图（1.59MB），其余 56 个笔记无图按用户要求留空（含泰式/中式炒空心菜、花菜沙拉做法一/二——笔记本身无图）。
+- 菜单计划卡片：名称下方只显示「N 食材 · M 调味料」数量，不再列食材/调味料名称；删除 `getRecipeSeasoningSummary` 及相关样式。
+- 食谱库卡片：「添加到菜单/编辑/删除」三个图标按钮从卡片行移入展开区，默认隐藏，轻点卡片与做法一起显示。
+- 采购清单顶栏：「手动添加/批量删除/复制清单」缩小字号与内距（13px/34px 高）并禁止换行，桌面与 390px 手机宽度下均保持同一行（已截图验证）。
+- `npm run build` 通过；浏览器验证：计划卡数量显示、卡片折叠无按钮/展开出三按钮、三按钮同行。
+
 ## 2026-09-05（分支 app-v1：成品图 + 卡片改版 + 多关键词搜索 + 采购清单优化）
 
 - 食谱编辑页新增「上传/更换/移除成品图」：`Recipe.image` 字段存压缩后的 data URL（canvas 缩到最长边 480px、JPEG 0.68），新增 `src/domain/images.ts`；`migrateRecipe` 兼容保留 `image`，导入导出 JSON 均不丢图。

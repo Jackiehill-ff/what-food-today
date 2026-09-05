@@ -84,9 +84,3 @@ export const getRecipeIngredientSummary = (recipe: Recipe) =>
     .filter((item) => item.category === "食材" && item.name.trim())
     .map((item) => item.name.trim())
     .join(" ");
-
-export const getRecipeSeasoningSummary = (recipe: Recipe) =>
-  recipe.ingredients
-    .filter((item) => item.category === "调味料" && item.name.trim())
-    .map((item) => item.name.trim())
-    .join(" ");

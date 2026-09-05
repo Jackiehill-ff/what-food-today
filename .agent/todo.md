@@ -1,5 +1,13 @@
 # Todo
 
+## 已完成（2026-09-05 第二轮：flomo 成品图 + UI 微调）
+
+- [x] 成品图数据源切换为 flomo 笔记原图：`scripts/extract-flomo-images.mjs` 解析 flomo HTML 导出（备忘录标题归一化匹配、多条命中取带图最新笔记的第一张图）→ `flomo-images.json` → `apply-recipe-images.mjs scripts/recipe-images/flomo-images.json` 嵌入。107/163 带图（其余笔记无图留空），recipes.json 1.59MB。
+- [x] 菜单计划卡片：名称下只显示「N 食材 · M 调味料」数量。
+- [x] 食谱库卡片：「添加到菜单/编辑/删除」图标按钮移入展开区，与做法一起显示，折叠时隐藏。
+- [x] 采购清单顶栏三按钮（手动添加/批量删除/复制清单）缩小并固定同一行（390px 手机宽度验证通过）。
+- [x] `npm run build` 通过；浏览器验证三处改动；APK 重新打包并更新局域网下载服务。
+
 ## 已完成（2026-09-05 分支 app-v1：成品图 + 卡片改版 + 搜索 + 采购清单）
 
 - [x] 食谱编辑页新增上传/更换/移除成品图（canvas 压缩为 data URL，`Recipe.image` + `src/domain/images.ts`，迁移兼容保留）。
@@ -8,8 +16,8 @@
 - [x] 菜单计划 + 食谱库搜索支持多关键词（空格分隔、全部命中，`src/domain/search.ts`）；计划搜索纳入食材名。
 - [x] 采购清单：最新勾选排最后（`checkedAt`，未勾选仍按分类+时间在前）；「批量删除」一键删已勾选；数量单位与名称同行（弹窗同步）；复制清单只复制名称+数量单位。
 - [x] `npm run build` 通过；浏览器冒烟测试通过（搜索/弹窗/改日期/拖拽/勾选排序/批量删除/复制/图片渲染）。
-- [x] 新增 `scripts/apply-recipe-images.mjs`：按 `scripts/recipe-images/search-results.json` 下载图片 → sips 压缩（240px/q55，超 40KB 自动二次压缩）→ base64 写入 `recipes.json`；可续跑、带缓存。已嵌入 85/163 个食谱成品图（1.6MB）。
-- [ ] 剩余 78 个食谱补图：往 `scripts/recipe-images/search-results.json` 添加条目后重跑脚本即可；注意全量嵌入时需再收紧压缩参数（163 张按当前参数约 2.4MB base64，逼近 localStorage 上限）。
+- [x] 新增 `scripts/apply-recipe-images.mjs`：下载图片 → sips 压缩（240px/q55，超 40KB 自动二次压缩）→ base64 写入 `recipes.json`；可续跑、带缓存、支持本地路径与自定义映射文件。
+- [x] 成品图最终采用 flomo 原图（107/163）；早前网络搜索图已被替换，`search-results.json` 仅留作参考。
 - [ ] 用户在手机端导入 recipes.json 验证图片显示与存储占用。
 
 ## 已完成（2026-09-03 UI/交互改版 + 导入 OCR）
