@@ -1,5 +1,10 @@
 # Todo
 
+## 已完成（2026-09-05 第三轮：菜单计划 ⋮ 菜单改版）
+
+- [x] ⋮ 展开面板：上方显示完整做法（保换行、超高滚动），底部「修改时间」日期选择 + 「删除」按钮同一行。
+- [x] `npm run build` 通过；浏览器 + 390px 截图验证；APK 重新打包并更新下载服务。
+
 ## 已完成（2026-09-05 第二轮：flomo 成品图 + UI 微调）
 
 - [x] 成品图数据源切换为 flomo 笔记原图：`scripts/extract-flomo-images.mjs` 解析 flomo HTML 导出（备忘录标题归一化匹配、多条命中取带图最新笔记的第一张图）→ `flomo-images.json` → `apply-recipe-images.mjs scripts/recipe-images/flomo-images.json` 嵌入。107/163 带图（其余笔记无图留空），recipes.json 1.59MB。

@@ -1427,17 +1427,28 @@ function DayMenuList({
             </button>
             {openMenuRecipeId === recipe.id && (
               <div className="plan-card-menu">
-                <label className="plan-card-date">
-                  改到
-                  <input
-                    type="date"
-                    value={planDate}
-                    onChange={(event) => onMoveDate(recipe.id, event.target.value)}
-                  />
-                </label>
-                <button className="icon-button danger" onClick={() => onRemove(recipe.id)} title="删除" aria-label="删除">
-                  <Trash2 size={15} />
-                </button>
+                <div className="plan-card-menu-method">
+                  <h4>做法</h4>
+                  {recipe.method ? <p>{recipe.method}</p> : <p className="muted">暂无做法</p>}
+                </div>
+                <div className="plan-card-menu-actions">
+                  <label className="plan-card-date">
+                    修改时间
+                    <input
+                      type="date"
+                      value={planDate}
+                      onChange={(event) => onMoveDate(recipe.id, event.target.value)}
+                    />
+                  </label>
+                  <button
+                    className="ghost-button danger"
+                    onClick={() => onRemove(recipe.id)}
+                    title="从当天菜单删除"
+                  >
+                    <Trash2 size={15} />
+                    删除
+                  </button>
+                </div>
               </div>
             )}
           </article>

@@ -1015,12 +1015,41 @@ label {
 
 .plan-card-menu {
   grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  display: grid;
   gap: 10px;
   padding-top: 10px;
   border-top: 1px dashed #e1e7df;
+}
+
+.plan-card-menu-method h4 {
+  margin: 0 0 4px;
+  color: #315849;
+  font-size: 13px;
+}
+
+.plan-card-menu-method p {
+  max-height: 40vh;
+  margin: 0;
+  overflow-y: auto;
+  color: #33453c;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.plan-card-menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.plan-card-menu-actions .ghost-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .plan-card-date {
@@ -1028,7 +1057,7 @@ label {
   align-items: center;
   gap: 8px;
   color: #42534b;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
 }
 
