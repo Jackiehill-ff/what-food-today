@@ -71,3 +71,12 @@
 - 粘贴网址自动抓取：**纯前端不可行**。浏览器 `fetch` 跨域受 CORS 限制，绝大多数食谱站不返回 `Access-Control-Allow-Origin`；小红书/抖音/Instagram/YouTube 等还需登录与反爬、JS 渲染，静态抓取拿不到内容。若要做需引入后端代理/服务（超出当前纯前端应用范围），暂不实现。
 - 上传图片识别文字：**可行**，采用 `tesseract.js` 浏览器端 OCR（中英文 `chi_sim+eng`），结果填入导入文本框后再走既有「解析」流程；worker/core/语言包运行时从 CDN 下载（首次识别需联网，约十几 MB）。
 - 反馈功能：无后端，采用「提交到 GitHub Issues（预填标题正文）+ 复制文本」双通道。
+
+## 成品图与本轮交互决策（2026-09-05，分支 app-v1）
+
+- 成品图存 data URL 直接嵌进食谱 JSON（批量脚本 240px/q55、App 内上传 480px/q0.68），不建图床、离线可用。硬约束是 localStorage 约 2.6M 字符上限（Android WebView 实测口径），因此全库图片压在 ~1MB 量级，`recipes.json` 控制在 1.6MB 左右；未来全量 163 张嵌入需再收紧压缩参数或改用 IndexedDB 存图。
+- 图片数据源优先级：**flomo 笔记原图 > 网络搜索图 > 空**。flomo 原图是用户自己做的菜、标题可精确匹配（`extract-flomo-images.mjs`），网络搜索图仅作早期过渡（`search-results.json` 留档参考，实际已被全部替换）；笔记无图的食谱按需求留空，不用网络图补。
+- 网络图片搜索可行性结论：直接 curl Bing/DuckDuckGo 图片接口会返回缓存垃圾结果，不可用；image-search MCP 可用（返回中文图述可判断水印/包装/广告图），但单张质量参差、需多轮重试，性价比低于 flomo 原图。
+- App 内上传图片用 canvas 压缩后再存，`saveAppState` 捕获 localStorage 配额异常（console.error），超限不再抛错打断应用。
+- 采购清单排序改为「未勾选按分类+时间在前，已勾选按勾选时间垫底」：边买边勾的场景下，最新勾掉的沉底，剩余要买的始终在视野内；`checkedAt` 只在勾选动作时写入。
+- 菜单计划排序用 pointer 事件实现拖拽（鼠标/触屏通用），不用 HTML5 DnD（Android WebView 触屏不触发）。
