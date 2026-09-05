@@ -82,5 +82,10 @@ export const loadAppState = (): AppState => {
 };
 
 export const saveAppState = (state: AppState) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    // localStorage 配额满时保底：不让保存异常打断整个应用，但明确暴露问题
+    console.error("保存本地数据失败（可能超出浏览器存储配额）", error);
+  }
 };

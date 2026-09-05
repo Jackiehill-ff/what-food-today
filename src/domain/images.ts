@@ -1,5 +1,6 @@
 // 把用户选的图片压缩成 data URL 存进食谱，避免 localStorage 超额
-export const readImageAsRecipeDataUrl = async (file: File, maxSide = 720, quality = 0.72): Promise<string> => {
+// （240px 足够卡片缩略图和编辑页预览使用）
+export const readImageAsRecipeDataUrl = async (file: File, maxSide = 480, quality = 0.68): Promise<string> => {
   const objectUrl = URL.createObjectURL(file);
   try {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {

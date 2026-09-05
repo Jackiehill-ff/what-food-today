@@ -32,7 +32,8 @@
 - `src/domain/shopping.ts`：统一采购清单排序 helper。
 - `src/styles.css`：主要样式。
 - `scripts/build-recipes-json.mjs`：flomo 文本批量导入脚本，支持笔记切分、括号感知切分、调味料自动识别、字段别名和做法提取；也支持从 App 导出 JSON 归一化。
-- `recipes.json`：批量生成的正式食谱库（163 个食谱），可直接在「数据 → 导入」导入。
+- `scripts/apply-recipe-images.mjs`：按 `scripts/recipe-images/search-results.json`（食谱名 → 图片 URL）下载成品图、sips 压缩（240px/q55）后以 base64 `image` 字段写入 `recipes.json`；可续跑、缓存于 `scripts/recipe-images/cache/`（已 gitignore）。
+- `recipes.json`：批量生成的正式食谱库（163 个食谱，其中 85 个已嵌成品图），可直接在「数据 → 导入」导入。
 - `docs/supabase-schema.sql`：Supabase Postgres/RLS 表结构和 policy 草案。
 - `docs/auth-foundation-checklist.md`：账号基础设施手动验收清单。
 - `README.md`：运行和部署说明。
@@ -88,6 +89,7 @@ meal-planner-sync-v1
 - `ingredients`：食材和调味料列表；其中 `category` 为 `调味料` 的项在 UI 中作为调味料展示。
 - `method`：做法步骤文本，通常按行展示。
 - `rawText`：原始文本或备注；导入解析不完整时必须保留原文。
+- `image`：成品图，压缩后的 data URL（编辑页上传最长边 480px；批量脚本 240px），导入导出和迁移均保留。
 - `createdAt`：创建时间。
 - `updatedAt`：更新时间。
 

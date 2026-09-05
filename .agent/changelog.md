@@ -2,11 +2,13 @@
 
 ## 2026-09-05（分支 app-v1：成品图 + 卡片改版 + 多关键词搜索 + 采购清单优化）
 
-- 食谱编辑页新增「上传/更换/移除成品图」：`Recipe.image` 字段存压缩后的 data URL（canvas 缩到最长边 720px、JPEG 0.72），新增 `src/domain/images.ts`；`migrateRecipe` 兼容保留 `image`，导入导出 JSON 均不丢图。
+- 食谱编辑页新增「上传/更换/移除成品图」：`Recipe.image` 字段存压缩后的 data URL（canvas 缩到最长边 480px、JPEG 0.68），新增 `src/domain/images.ts`；`migrateRecipe` 兼容保留 `image`，导入导出 JSON 均不丢图。
 - 食谱库卡片改版：左侧展示 84px 成品图（无图显示 Soup 占位），编辑/删除改为纯图标按钮，新增「添加到菜单」图标（CalendarPlus），点开出「今天/明天」选项，加入后同样弹出食材勾选弹窗。
 - 菜单计划卡片改版：不显示食谱类型和做法，只显示食材名称 + 调味料名称；左侧 56px 成品图；「更改日期（date input）/删除」收纳进右上「⋮」更多菜单默认隐藏；支持按住手柄拖动排序（pointer 事件，鼠标/触屏通用），`reorderMealPlanEntries` 只重排当天条目、`moveMealPlanEntry` 改日期且目标日去重。
 - 搜索栏多关键词：菜单计划与食谱库搜索均按空格切分关键词、全部命中才匹配（`src/domain/search.ts`）；计划搜索提示词改为「想吃什么就告诉我，别客气！」，并把食材名纳入计划搜索范围。
 - 采购清单：勾选时间排序——未勾选在前（分类→添加时间），已勾选按勾选时间排后、最新勾选永远最后（`ShoppingListItem.checkedAt`）；新增「批量删除」一键删除全部已勾选项（confirm 确认）；数量+单位与名称同行展示（弹窗内同步）；「复制清单」只复制 `- 名称 数量单位`，不再带勾选标记和分类。
+- 食谱成品图批量入库：新增 `scripts/apply-recipe-images.mjs`（下载 `scripts/recipe-images/search-results.json` 中的图片 → sips 压缩 240px/q55 → base64 写入 `recipes.json`，可续跑、带缓存与超限二次压缩）。已为 85/163 个食谱嵌入成品图（搜索词与选图记录见 `search-results.json`；剩余 78 个按用户要求暂停，补图时往该文件加条目重跑脚本即可）。`recipes.json` 从 345KB 增至 1.6MB，低于 Android WebView localStorage ≈2.6M 字符上限。
+- `saveAppState` 捕获 localStorage 配额异常（console.error），避免超限时保存崩溃。
 - `npm run build` 通过；浏览器冒烟验证：多关键词搜索、加菜弹窗、改日期、拖拽排序、勾选排序、批量删除、复制文本、图片渲染（快照 + 截图）。
 
 ## 2026-09-03（导航改版 + 食谱信息流 + 采购弹窗 + 反馈 + 导入 OCR）

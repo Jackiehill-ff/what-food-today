@@ -19,3 +19,6 @@ scripts/flomo-export-*.txt
 # WorkBuddy 本地记忆
 .workbuddy/
 .npm-cache/
+
+# 食谱图片原始/压缩缓存（search-results.json 保留，可续跑补图）
+scripts/recipe-images/cache/

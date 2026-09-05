@@ -8,7 +8,9 @@
 - [x] 菜单计划 + 食谱库搜索支持多关键词（空格分隔、全部命中，`src/domain/search.ts`）；计划搜索纳入食材名。
 - [x] 采购清单：最新勾选排最后（`checkedAt`，未勾选仍按分类+时间在前）；「批量删除」一键删已勾选；数量单位与名称同行（弹窗同步）；复制清单只复制名称+数量单位。
 - [x] `npm run build` 通过；浏览器冒烟测试通过（搜索/弹窗/改日期/拖拽/勾选排序/批量删除/复制/图片渲染）。
-- [ ] 给全部 163 个食谱按名称搜索成品图并写入 `recipes.json`（进行中：使用图片搜索 MCP + 下载压缩脚本）。
+- [x] 新增 `scripts/apply-recipe-images.mjs`：按 `scripts/recipe-images/search-results.json` 下载图片 → sips 压缩（240px/q55，超 40KB 自动二次压缩）→ base64 写入 `recipes.json`；可续跑、带缓存。已嵌入 85/163 个食谱成品图（1.6MB）。
+- [ ] 剩余 78 个食谱补图：往 `scripts/recipe-images/search-results.json` 添加条目后重跑脚本即可；注意全量嵌入时需再收紧压缩参数（163 张按当前参数约 2.4MB base64，逼近 localStorage 上限）。
+- [ ] 用户在手机端导入 recipes.json 验证图片显示与存储占用。
 
 ## 已完成（2026-09-03 UI/交互改版 + 导入 OCR）
 
