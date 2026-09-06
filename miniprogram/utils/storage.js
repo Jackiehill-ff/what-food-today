@@ -16,7 +16,7 @@ const migrateImportRecord = (record = {}) => ({
 });
 
 const migrateShoppingItem = (item = {}) => ({
-  id: item.id || createId(),
+  id: item.id ?? createId(),
   date: typeof item.date === "string" ? item.date : "",
   name: typeof item.name === "string" ? item.name : "",
   amount: typeof item.amount === "string" ? item.amount : "",
@@ -87,9 +87,11 @@ const saveAppState = (state) => {
       return recipe;
     });
     wx.setStorageSync(STORAGE_KEY, JSON.stringify({ ...state, recipes }));
+    return true;
   } catch (error) {
-    // 存储配额满时保底：不让保存异常打断整个应用，但明确暴露问题
+    // 存储配额满时保底：不让保存异常打断整个应用，但把结果返回给调用方提示
     console.error("保存本地数据失败（可能超出存储配额）", error);
+    return false;
   }
 };
 

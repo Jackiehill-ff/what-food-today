@@ -31,12 +31,15 @@ const createBlankRecipe = () => ({
   updatedAt: createTimestamp(),
 });
 
+// 只对字符串做 trim，避免历史数据混入非字符串时抛错、进而整份数据迁移失败被重置
+const asTrimmedString = (value) => (typeof value === "string" ? value.trim() : "");
+
 const normalizeIngredient = (item = {}) => ({
   id: item.id || createId(),
-  name: (item.name || "").trim(),
+  name: asTrimmedString(item.name),
   category: normalizeCategory(item.category),
-  amount: (item.amount || "").trim(),
-  unit: (item.unit || "").trim(),
+  amount: asTrimmedString(item.amount),
+  unit: asTrimmedString(item.unit),
 });
 
 const isRecipeType = (value) => value === "full" || value === "simple";
@@ -50,12 +53,12 @@ const migrateRecipe = (recipe = {}) => {
 
   return {
     id: recipe.id || createId(),
-    title: (recipe.title || recipe.name || "").trim(),
+    title: asTrimmedString(recipe.title ?? recipe.name),
     type: isRecipeType(recipe.type) ? recipe.type : isRecipeType(recipe.kind) ? recipe.kind : "full",
-    category: (recipe.category || "").trim(),
+    category: asTrimmedString(recipe.category),
     ingredients,
-    method: (recipe.method || recipe.steps || "").trim(),
-    rawText: (recipe.rawText || recipe.notes || "").trim(),
+    method: asTrimmedString(recipe.method ?? recipe.steps),
+    rawText: asTrimmedString(recipe.rawText ?? recipe.notes),
     image: typeof recipe.image === "string" ? recipe.image : "",
     createdAt: recipe.createdAt || now,
     updatedAt: recipe.updatedAt || now,

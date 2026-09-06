@@ -3,7 +3,7 @@
   <view class="card panel">
     <view class="panel-head">
       <text class="panel-title">账号</text>
-      <text class="sync-tag">{{isCloudEnabled ? (user ? '已登录' : '未登录') : '本地模式'}}</text>
+      <text class="sync-tag">{{syncTagText}}</text>
     </view>
 
     <block wx:if="{{!isCloudEnabled}}">

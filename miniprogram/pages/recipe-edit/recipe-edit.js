@@ -1,10 +1,19 @@
 const app = getApp();
 const { createId, createTimestamp } = require("../../utils/domain/ids");
 const { createBlankItem, createBlankRecipe } = require("../../utils/domain/recipes");
+const { isDataUrl, deleteImageFile } = require("../../utils/images");
 
 const UNIT_VALUES = ["", "g", "tsp"];
 const UNIT_LABELS = { "": "无", g: "克 (g)", tsp: "茶匙 (tsp)" };
 const CATEGORIES = ["食材", "调味料"];
+
+const mimeForPath = (filePath) => {
+  const ext = (String(filePath || "").split(".").pop() || "").toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  return "image/jpeg";
+};
 
 Page({
   data: {
@@ -18,6 +27,7 @@ Page({
   },
 
   onLoad(options) {
+    this._pendingImageDeletes = [];
     const id = options && options.id;
     if (id) {
       const recipe = app.globalData.appState.recipes.find((item) => item.id === id);
@@ -36,7 +46,12 @@ Page({
 
   refreshSections() {
     const draft = this.data.draft;
-    const decorate = (item) => ({ ...item, unitLabel: UNIT_LABELS[item.unit] || "无" });
+    const decorate = (item) => ({
+      ...item,
+      unitLabel: UNIT_LABELS[item.unit] || "无",
+      unitIndex: UNIT_VALUES.indexOf(item.unit) > -1 ? UNIT_VALUES.indexOf(item.unit) : 0,
+      categoryIndex: CATEGORIES.indexOf(item.category) > -1 ? CATEGORIES.indexOf(item.category) : 0,
+    });
     this.setData({
       food: draft.ingredients.filter((item) => item.category === "食材").map(decorate),
       seasoning: draft.ingredients.filter((item) => item.category === "调味料").map(decorate),
@@ -76,11 +91,21 @@ Page({
     wx.getFileSystemManager().readFile({
       filePath,
       encoding: "base64",
-      success: (res) => this.setData({ "draft.image": `data:image/jpeg;base64,${res.data}` }),
+      success: (res) => {
+        const oldImage = this.data.draft.image;
+        if (oldImage && !isDataUrl(oldImage)) {
+          this._pendingImageDeletes.push(oldImage);
+        }
+        this.setData({ "draft.image": `data:${mimeForPath(filePath)};base64,${res.data}` });
+      },
     });
   },
 
   removeImage() {
+    const oldImage = this.data.draft.image;
+    if (oldImage && !isDataUrl(oldImage)) {
+      this._pendingImageDeletes.push(oldImage);
+    }
     this.setData({ "draft.image": "" });
   },
 
@@ -177,7 +202,13 @@ Page({
       : [normalized, ...state.recipes];
     app.globalData.appState = { ...state, recipes };
     app.saveState();
+    this.flushImageDeletes();
     wx.navigateBack();
+  },
+
+  flushImageDeletes() {
+    (this._pendingImageDeletes || []).forEach((filePath) => deleteImageFile(filePath));
+    this._pendingImageDeletes = [];
   },
 
   cancel() {

@@ -3,6 +3,7 @@ const { getTodayKey, shiftDay } = require("../../utils/domain/mealPlan");
 const { splitKeywords, matchesAllKeywords } = require("../../utils/domain/search");
 const { getItemsForRecipe } = require("../../utils/domain/recipes");
 const { addSelectedToShopping } = require("../../utils/shoppingOps");
+const { isDataUrl, deleteImageFile } = require("../../utils/images");
 const { decorateRecipe } = require("../../utils/presenter");
 
 Page({
@@ -122,6 +123,9 @@ Page({
       content: `确定删除「${recipe ? recipe.title : ""}」？将同时从菜单计划移除。`,
       success: (res) => {
         if (res.confirm) {
+          if (recipe && recipe.image && !isDataUrl(recipe.image)) {
+            deleteImageFile(recipe.image);
+          }
           this.persist({
             ...state,
             recipes: state.recipes.filter((item) => item.id !== id),

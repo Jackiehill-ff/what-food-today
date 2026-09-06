@@ -4,7 +4,8 @@
 
 - [x] UI 对齐原 APP（配色/字体/图标/尺寸），修复文字显示不全与卡片/搜索框大小。
 - [x] 生成线条图标集替换 emoji；tabBar 图标重配色。
-- [x] 支持直接导入 `miniprogram/` 目录（cloudfunctionRoot 配置 + gitignore 私有配置）。
+- [x] 代码审查（4 路并行）：修复云函数幂等 upsert/集合兜底/资料清洗、导出走文件分享、迁移非字符串防崩溃、图片 MIME/残留清理、picker 索引、modal `inset`、冗余 project.config.json 等。
+- [x] 推送 `origin/Mini-V1`（不合并 main）。
 
 - [x] 新建分支 `Mini-V1`（AppID `wx603e02387ba0a6e0`）。
 - [x] 确认路线：基于主分支最新 APP 版原生微信小程序重写 + 微信一键登录（云开发）。

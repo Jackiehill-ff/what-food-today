@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-06（Mini-V1 · 代码审查修复）
+
+- 云函数：`login`/`saveProfile` 改为以 openid 作 `_id` 的幂等 upsert（消除并发首登重复用户 + 统一 schema）；加 try/catch + `createCollection` 兜底 + 结构化 `{ok,code,message}` 返回；`saveProfile` 服务端清洗资料（昵称限长 32、头像仅接受 `cloud://`/`https`/空）。
+- `me.js`：登录/保存错误透传真实 errMsg；登录结果校验 openid；头像稳定路径覆盖上传 + 清理旧文件；头像守卫改判 `isCloudEnabled`；导出改为异步读图 + `wx.shareFileMessage` 文件分享（不再受剪贴板 ~1MB 限制）；导入去掉不可靠的 `extension` 过滤、改按文件名 `.json` 校验。
+- 数据层：`recipes.js` 迁移用 `typeof === "string"` 判定，避免历史数据混入非字符串时抛错导致整份数据被重置；恢复 `??` 语义；`storage.saveAppState` 返回成败、`app.saveState` 失败 toast 提示；`images.js` 修正 MIME 推导、去掉 `/s` 标志、新增 `deleteImageFile` 并在删除食谱/更换图片时清理残留文件。
+- `recipe-edit`：图片 MIME 按扩展名推导（不再硬编码 jpeg）；picker 绑定 `value` 索引；删除/换图清理旧本地文件。
+- 样式/配置：`modal-mask` 去掉 `inset` 简写改为显式四边；分类圆点加 `max-width` 防溢出；「我的」账号状态标签改为 JS 预计算 `syncTagText`；删除冗余 `miniprogram/project.config.json`（统一用根目录配置，导入须选仓库根目录）。
+
 ## 2026-09-06（Mini-V1 · UI 对齐原 APP）
 
 - 配色/字体/图标全面对齐原 APP `styles.css`：主色 `#2f6f57`、次级绿 `#2d4d42`、危险 `#a43e35`、弱化 `#66776d`，卡片 `#fbfcfa`+`#dfe5dc` 边框、输入 `#cfd8ce`、日期条 `#eef5ef`、状态条 `#e4eee5` 等逐一校正；字体补回 Inter + PingFang 等原栈。

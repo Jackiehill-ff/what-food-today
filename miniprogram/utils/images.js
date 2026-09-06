@@ -14,11 +14,20 @@ const ensureImageDir = () => {
   }
 };
 
+// 按文件扩展名推导正确 MIME（jpg/jpeg → jpeg，png/webp/gif 各自对应）
+const mimeForPath = (filePath) => {
+  const ext = (String(filePath || "").split(".").pop() || "").toLowerCase();
+  if (ext === "png") return "png";
+  if (ext === "webp") return "webp";
+  if (ext === "gif") return "gif";
+  return "jpeg";
+};
+
 // 把 data URL 写到本地文件，返回可渲染的文件路径；失败时回退为原 data URL
 const persistImageToFile = (recipeId, dataUrl) => {
   ensureImageDir();
   try {
-    const match = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.*)$/s);
+    const match = dataUrl.match(/^data:image\/(png|jpeg|jpg|webp|gif);base64,(.*)$/);
     const ext = match ? (match[1] === "jpeg" ? "jpg" : match[1]) : "jpg";
     const base64 = match ? match[2] : dataUrl.slice(dataUrl.indexOf(",") + 1);
     const filePath = `${IMAGE_DIR}/${recipeId}.${ext}`;
@@ -34,12 +43,34 @@ const persistImageToFile = (recipeId, dataUrl) => {
 const readImageAsDataUrl = (filePath) => {
   try {
     const base64 = wx.getFileSystemManager().readFileSync(filePath, "base64");
-    const ext = filePath.split(".").pop() === "png" ? "png" : "jpeg";
-    return `data:image/${ext};base64,${base64}`;
+    return `data:image/${mimeForPath(filePath)};base64,${base64}`;
   } catch (error) {
     console.error("读取本地图片失败", error);
     return "";
   }
 };
 
-module.exports = { isDataUrl, persistImageToFile, readImageAsDataUrl };
+// 异步读取（导出时用，避免阻塞 UI）
+const readImageAsDataUrlAsync = (filePath) =>
+  new Promise((resolve, reject) => {
+    wx.getFileSystemManager().readFile({
+      filePath,
+      encoding: "base64",
+      success: (res) => resolve(`data:image/${mimeForPath(filePath)};base64,${res.data}`),
+      fail: reject,
+    });
+  });
+
+// 删除本地图片文件（食谱删除 / 更换图片时清理，避免残留占用存储）
+const deleteImageFile = (filePath) => {
+  if (typeof filePath !== "string" || !filePath) {
+    return;
+  }
+  try {
+    wx.getFileSystemManager().unlinkSync(filePath);
+  } catch (error) {
+    // 文件不存在或删除失败时忽略
+  }
+};
+
+module.exports = { isDataUrl, persistImageToFile, readImageAsDataUrl, readImageAsDataUrlAsync, deleteImageFile };

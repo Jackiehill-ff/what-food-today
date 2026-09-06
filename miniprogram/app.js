@@ -33,7 +33,21 @@ App({
 
   // 数据修改后的统一保存入口
   saveState() {
-    saveAppState(this.globalData.appState);
+    if (!saveAppState(this.globalData.appState)) {
+      this._warnSaveFailure();
+    }
+  },
+
+  _warnSaveFailure() {
+    // 节流：避免连续写入失败时反复弹提示
+    if (this._saveToastVisible) {
+      return;
+    }
+    this._saveToastVisible = true;
+    wx.showToast({ title: "保存失败：本地存储空间不足", icon: "none", duration: 2500 });
+    setTimeout(() => {
+      this._saveToastVisible = false;
+    }, 3000);
   },
 
   saveSyncMetadata() {

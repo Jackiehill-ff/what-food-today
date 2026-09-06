@@ -14,11 +14,11 @@
 
 ## 二、导入项目
 
-1. 打开开发者工具 → 「导入项目」→ 目录选择本仓库根目录（含 `project.config.json`）。
+1. 打开开发者工具 → 「导入项目」→ 目录选择**本仓库根目录**（含 `project.config.json`，里面已配好 `miniprogramRoot` 与 `cloudfunctionRoot`）。
 2. AppID 会自动带出 `wx603e02387ba0a6e0`；若提示填写，手动填入。
 3. 点击「确定」，工具会用基础库编译 `miniprogram/`。
 
-> 也可以直接导入 `miniprogram/` 目录（代码本身就在该目录下）。`miniprogram/project.config.json` 已配好 `cloudfunctionRoot: "../cloudfunctions/"`，两种导入方式都能找到云函数。
+> 注意：请导入仓库根目录，而不是 `miniprogram/` 子目录——云函数目录 `cloudfunctions/` 在仓库根目录下，只有按根目录导入才能同时识别代码和云函数。
 
 ## 三、开通云开发并部署登录云函数
 

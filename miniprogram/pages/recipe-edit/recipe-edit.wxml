@@ -40,10 +40,10 @@
       </view>
       <view class="item-mid">
         <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
-        <picker class="item-picker" range="{{unitLabels}}" data-id="{{item.id}}" bindchange="onUnitChange">
+        <picker class="item-picker" range="{{unitLabels}}" value="{{item.unitIndex}}" data-id="{{item.id}}" bindchange="onUnitChange">
           <view class="picker-value">{{item.unitLabel}}</view>
         </picker>
-        <picker class="item-picker" range="{{categories}}" data-id="{{item.id}}" bindchange="onCategoryChange">
+        <picker class="item-picker" range="{{categories}}" value="{{item.categoryIndex}}" data-id="{{item.id}}" bindchange="onCategoryChange">
           <view class="picker-value">{{item.category}}</view>
         </picker>
       </view>
@@ -75,10 +75,10 @@
       </view>
       <view class="item-mid">
         <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
-        <picker class="item-picker" range="{{unitLabels}}" data-id="{{item.id}}" bindchange="onUnitChange">
+        <picker class="item-picker" range="{{unitLabels}}" value="{{item.unitIndex}}" data-id="{{item.id}}" bindchange="onUnitChange">
           <view class="picker-value">{{item.unitLabel}}</view>
         </picker>
-        <picker class="item-picker" range="{{categories}}" data-id="{{item.id}}" bindchange="onCategoryChange">
+        <picker class="item-picker" range="{{categories}}" value="{{item.categoryIndex}}" data-id="{{item.id}}" bindchange="onCategoryChange">
           <view class="picker-value">{{item.category}}</view>
         </picker>
       </view>
