@@ -1,0 +1,162 @@
+.page {
+  padding: 24rpx;
+  padding-bottom: 60rpx;
+}
+
+.day-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.day-btn {
+  flex-shrink: 0;
+  min-height: 64rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+}
+
+.day-header {
+  flex: 1;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.today-btn {
+  margin-top: 16rpx;
+  min-height: 56rpx;
+  padding: 0 24rpx;
+  font-size: 24rpx;
+  border-radius: 999rpx;
+  background: #eef3ee;
+  color: var(--green);
+}
+
+.plan-list {
+  margin-top: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.plan-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-wrap: wrap;
+  background: var(--card);
+  border-radius: 18rpx;
+  padding: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(29, 37, 33, 0.04);
+}
+
+.plan-thumb {
+  width: 112rpx;
+  height: 112rpx;
+}
+
+.thumb-emoji {
+  font-size: 48rpx;
+}
+
+.plan-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plan-count {
+  font-size: 24rpx;
+  color: var(--muted);
+  margin-top: 4rpx;
+}
+
+.more-btn {
+  font-size: 36rpx;
+}
+
+.plan-menu {
+  width: 100%;
+  margin-top: 8rpx;
+  padding-top: 16rpx;
+  border-top: 1px solid var(--border);
+}
+
+.method-block {
+  margin-bottom: 16rpx;
+}
+
+.method-title {
+  font-size: 24rpx;
+  color: var(--muted);
+  margin-bottom: 6rpx;
+}
+
+.method-block text {
+  font-size: 26rpx;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.menu-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.menu-small {
+  flex: 1;
+  min-height: 60rpx;
+  font-size: 24rpx;
+  padding: 0 12rpx;
+}
+
+.menu-small.danger {
+  color: var(--danger);
+  border-color: #ecd7d2;
+}
+
+.menu-date {
+  flex: 1;
+}
+
+.picker-panel {
+  margin-top: 32rpx;
+}
+
+.plan-input {
+  font-size: 28rpx;
+}
+
+.picker-results {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.picker-empty {
+  padding: 24rpx;
+}
+
+.picker-item {
+  width: 100%;
+  min-height: 80rpx;
+  padding: 0 24rpx;
+  text-align: left;
+  background: var(--card);
+  border-radius: 14rpx;
+  font-size: 28rpx;
+  border: 1px solid var(--border);
+}

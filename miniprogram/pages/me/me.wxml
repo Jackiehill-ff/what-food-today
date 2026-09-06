@@ -1,0 +1,99 @@
+<view class="page">
+  <!-- 账号 -->
+  <view class="card panel">
+    <view class="panel-head">
+      <text class="panel-title">账号</text>
+      <text class="sync-tag">{{isCloudEnabled ? (user ? '已登录' : '未登录') : '本地模式'}}</text>
+    </view>
+
+    <block wx:if="{{!isCloudEnabled}}">
+      <view class="muted">未开通云开发，当前继续使用本地数据。</view>
+    </block>
+
+    <block wx:elif="{{user}}">
+      <view class="profile-row">
+        <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+          <image wx:if="{{avatarUrl}}" class="avatar" src="{{avatarUrl}}" mode="aspectFill" />
+          <view wx:else class="avatar avatar-empty">🥣</view>
+        </button>
+        <view class="profile-main">
+          <input
+            class="input nickname-input"
+            type="nickname"
+            value="{{nickname}}"
+            bindinput="onNicknameInput"
+            placeholder="设置昵称"
+          />
+          <view class="openid">{{openidMasked}}</view>
+        </view>
+      </view>
+      <view class="row-actions">
+        <button class="btn btn-ghost" bindtap="saveProfileTap">保存资料</button>
+        <button class="btn btn-ghost danger" bindtap="logout">退出登录</button>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="muted">登录后可将账号与数据关联（当前数据仍保存在本机）。</view>
+      <button class="btn btn-primary btn-block login-btn" bindtap="loginTap" disabled="{{busy}}">
+        {{busy ? '登录中…' : '微信一键登录'}}
+      </button>
+    </block>
+
+    <view class="panel-msg" wx:if="{{accountMessage}}">{{accountMessage}}</view>
+  </view>
+
+  <!-- 数据 -->
+  <view class="card panel">
+    <view class="panel-head">
+      <text class="panel-title">数据</text>
+    </view>
+    <view class="muted">导出 JSON 备份，或从聊天文件（如 recipes.json）导入恢复。</view>
+    <view class="row-actions">
+      <button class="btn btn-ghost" bindtap="exportData">导出 JSON</button>
+      <button class="btn btn-ghost" bindtap="importData">导入</button>
+      <button class="btn btn-ghost" bindtap="createBackup">创建备份</button>
+    </view>
+    <view class="panel-msg" wx:if="{{dataStatus}}">{{dataStatus}}</view>
+  </view>
+
+  <!-- 统计 -->
+  <view class="card panel">
+    <view class="panel-head">
+      <text class="panel-title">统计</text>
+    </view>
+    <view class="stats">
+      <view class="stat">
+        <text class="stat-num">{{stats.recipes}}</text>
+        <text class="stat-label">食谱</text>
+      </view>
+      <view class="stat">
+        <text class="stat-num">{{stats.planned}}</text>
+        <text class="stat-label">已安排</text>
+      </view>
+      <view class="stat">
+        <text class="stat-num">{{stats.shopping}}</text>
+        <text class="stat-label">采购项</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 反馈 -->
+  <view class="card panel">
+    <view class="panel-head">
+      <text class="panel-title">反馈</text>
+    </view>
+    <view class="muted">写下建议或问题，提交到 GitHub Issues，或复制后自行发送。</view>
+    <textarea
+      class="textarea feedback-input"
+      value="{{feedbackText}}"
+      bindinput="onFeedbackInput"
+      placeholder="描述建议或遇到的问题…"
+      maxlength="500"
+    />
+    <view class="row-actions">
+      <button class="btn btn-ghost" bindtap="openGitHubIssue" disabled="{{!feedbackText}}">提交到 GitHub</button>
+      <button class="btn btn-ghost" bindtap="copyFeedback" disabled="{{!feedbackText}}">复制</button>
+    </view>
+  </view>
+</view>

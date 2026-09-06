@@ -1,0 +1,43 @@
+<view class="modal-mask" wx:if="{{visible}}" bindtap="onClose">
+  <view class="modal" catchtap="noop">
+    <view class="modal-header">
+      <view>
+        <view class="modal-title">{{recipe.title}}</view>
+        <view class="modal-subtitle">勾选缺少的食材，加入采购清单</view>
+      </view>
+      <view class="icon-btn" bindtap="onClose">✕</view>
+    </view>
+
+    <view class="modal-body">
+      <view class="empty" wx:if="{{items.length === 0}}">
+        <text class="empty-title">这个食谱还没有食材</text>
+        <text class="empty-text">可以先加入菜单，之后在食谱库补全食材。</text>
+      </view>
+      <view
+        class="popup-item {{item.checked ? 'checked' : ''}}"
+        wx:for="{{items}}"
+        wx:key="id"
+        wx:for-item="item"
+        bindtap="toggleItem"
+        data-id="{{item.id}}"
+      >
+        <view class="checkbox {{item.checked ? 'checked' : ''}}">{{item.checked ? '✓' : ''}}</view>
+        <text class="dot">{{item.category === '调味料' ? '调' : '食'}}</text>
+        <view class="popup-item-main">
+          <text class="popup-item-name">{{item.name}}</text>
+          <text class="popup-item-amount">{{item.amount}}{{item.unit}} {{(!item.amount && !item.unit) ? '适量' : ''}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="modal-footer">
+      <view class="select-all" bindtap="toggleAll">
+        <view class="checkbox {{allChecked ? 'checked' : ''}}">{{allChecked ? '✓' : ''}}</view>
+        <text>全选</text>
+      </view>
+      <button class="btn btn-primary" bindtap="onConfirm" disabled="{{selectedCount === 0}}">
+        加入已选{{selectedCount > 0 ? ' (' + selectedCount + ')' : ''}}
+      </button>
+    </view>
+  </view>
+</view>

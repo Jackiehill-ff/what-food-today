@@ -1,0 +1,122 @@
+.page {
+  padding: 24rpx;
+  padding-bottom: 80rpx;
+}
+
+.image-editor {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+.edit-thumb {
+  width: 200rpx;
+  height: 200rpx;
+}
+
+.image-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.field-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.field-row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-bottom: 20rpx;
+}
+
+.field-label {
+  font-size: 26rpx;
+  color: var(--muted);
+}
+
+.section {
+  margin-bottom: 24rpx;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.add-btn {
+  min-height: 60rpx;
+  font-size: 24rpx;
+  padding: 0 20rpx;
+}
+
+.item-card {
+  background: #faf8f4;
+  border-radius: 14rpx;
+  padding: 16rpx;
+  margin-bottom: 14rpx;
+}
+
+.item-top {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.item-name {
+  flex: 1;
+}
+
+.item-mid {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.item-amount {
+  flex: 1;
+}
+
+.item-picker {
+  flex: 1;
+}
+
+.picker-value {
+  padding: 14rpx 16rpx;
+  border: 1px solid var(--border);
+  border-radius: 12rpx;
+  background: #fff;
+  font-size: 26rpx;
+  text-align: center;
+  color: var(--text);
+}
+
+.item-bottom {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 32rpx;
+}

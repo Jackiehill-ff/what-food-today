@@ -1,0 +1,59 @@
+<view class="page">
+  <view class="hint">
+    粘贴 flomo 或其他来源的食谱文本，按「食材：/调味料：/做法：」分段，可一次解析多个食谱。
+  </view>
+
+  <textarea
+    class="textarea import-input"
+    value="{{importText}}"
+    bindinput="onInput"
+    placeholder="例如：&#10;番茄炒蛋&#10;食材：番茄、鸡蛋&#10;调味料：盐、糖&#10;做法：先炒蛋，再加番茄翻炒。"
+    maxlength="-1"
+  />
+
+  <button class="btn btn-primary btn-block" bindtap="parse" disabled="{{!importText}}">解析</button>
+
+  <view class="status-note" wx:if="{{importStatus}}">{{importStatus}}</view>
+
+  <view class="empty" wx:if="{{drafts.length === 0}}">
+    <text class="empty-title">等待解析</text>
+    <text class="empty-text">粘贴文本后先「解析」，再编辑预览保存。</text>
+  </view>
+
+  <view class="draft-list">
+    <view class="draft-card" wx:for="{{drafts}}" wx:key="id" wx:for-item="draft" wx:for-index="idx">
+      <view class="draft-head">
+        <text class="section-title">预览 {{idx + 1}}</text>
+        <text class="warning" wx:if="{{draft.parseFailed}}">需补全</text>
+      </view>
+
+      <view class="field">
+        <text class="field-label">标题</text>
+        <input class="input" value="{{draft.title}}" data-id="{{draft.id}}" data-field="title" bindinput="updateDraft" placeholder="菜名" />
+      </view>
+
+      <view class="field">
+        <view class="field-head">
+          <text class="field-label">食材</text>
+          <button class="btn btn-ghost add-btn" bindtap="addIngredient" data-draft-id="{{draft.id}}">＋ 添加</button>
+        </view>
+        <view class="ingredient-row" wx:for="{{draft.ingredients}}" wx:key="id" wx:for-item="item">
+          <input class="input" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindinput="updateIngredient" placeholder="名称" />
+          <view class="icon-btn danger" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindtap="removeIngredient">🗑</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <text class="field-label">做法</text>
+        <textarea class="textarea" value="{{draft.method}}" data-id="{{draft.id}}" data-field="method" bindinput="updateDraft" />
+      </view>
+
+      <view class="field" wx:if="{{draft.rawText && draft.parseFailed}}">
+        <text class="field-label">原始文本</text>
+        <textarea class="textarea" value="{{draft.rawText}}" data-id="{{draft.id}}" data-field="rawText" bindinput="updateDraft" />
+      </view>
+    </view>
+  </view>
+
+  <button class="btn btn-primary btn-block save-btn" wx:if="{{drafts.length > 0}}" bindtap="save">保存全部食谱</button>
+</view>

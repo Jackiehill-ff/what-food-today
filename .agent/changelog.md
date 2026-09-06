@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-06（分支 Mini-V1：原生微信小程序重写 + 微信一键登录）
+
+- 新建分支 `Mini-V1`（AppID `wx603e02387ba0a6e0`），基于主分支最新 APP 版用原生微信小程序重写（WXML/WXSS/JS）。
+- 生成小程序图标：`assets/brand/app-icon.svg` / `app-icon-144.png` / `app-icon-1024.png`（黄底 `#f8d46b` + 深绿 `#254139` 汤碗简笔画，即导航栏品牌图标）；生成 tabBar 五枚图标 `miniprogram/images/tabbar/`。
+- 移植领域与数据层到 `miniprogram/utils/`（constants/ids/recipes/mealPlan/shopping/search/importParser + storage），沿用 `meal-planner-app-v1` 数据键与迁移逻辑；新增 `images.js`（成品图落盘，规避小程序单 key 1MB 上限）、`presenter.js`、`shoppingOps.js`。
+- 微信一键登录：云函数 `cloudfunctions/login`、`cloudfunctions/saveProfile`（云开发，`getWXContext().OPENID` 识别 + `users` 集合登记资料），客户端 `utils/cloud.js` + `我的` 页登录/退出/头像昵称。
+- 实现全部五个 tab 页：菜单计划（日视图/加菜/弹窗勾选/改日期/删除/上移下移）、导入中心（粘贴解析）、食谱库（信息流/搜索/分类/展开/加到菜单/编辑/删除）+ 食谱编辑（成品图/食材排序）、采购清单（勾选排序/手动添加/批量删除/复制）、我的（登录/数据导出导入/备份/反馈/统计）。
+- 食谱不预置不打包，用户自行导入（「导入中心」或「数据 → 导入」）。
+- 新增 `docs/miniprogram-launch.md` 上线指南；所有 JS/JSON 通过语法校验。
+- 未改动部署配置（`.github/workflows/`）；未在微信开发者工具内真机联调（需用户在工具内操作，见上线指南）。
+
 ## 2026-09-05（清理：过程性文件与远端分支）
 
 - 删除 `scripts/recipe-images/` 全目录（搜索图映射、flomo 映射、41MB 图片缓存）、`dist/`、`android` 构建产物；相关脚本保留，补图流程改为 extract → apply 两步。

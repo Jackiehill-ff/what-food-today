@@ -1,0 +1,94 @@
+<view class="page" wx:if="{{draft}}">
+  <!-- 成品图 -->
+  <view class="image-editor">
+    <view class="thumb edit-thumb {{draft.image ? '' : 'thumb-placeholder'}}">
+      <image wx:if="{{draft.image}}" class="thumb-img" src="{{draft.image}}" mode="aspectFill" />
+      <text wx:else class="thumb-emoji">🥣</text>
+    </view>
+    <view class="image-actions">
+      <button class="btn btn-ghost" bindtap="chooseImage">{{draft.image ? '换一张' : '上传成品图'}}</button>
+      <button class="btn btn-ghost danger" wx:if="{{draft.image}}" bindtap="removeImage">移除图片</button>
+    </view>
+  </view>
+
+  <!-- 名称 / 分类 -->
+  <view class="field-row">
+    <view class="field">
+      <text class="field-label">食谱名称</text>
+      <input class="input" value="{{draft.title}}" data-field="title" bindinput="onFieldInput" placeholder="番茄炒蛋" />
+    </view>
+    <view class="field">
+      <text class="field-label">分类</text>
+      <input class="input" value="{{draft.category}}" data-field="category" bindinput="onFieldInput" placeholder="家常菜" />
+    </view>
+  </view>
+
+  <!-- 食材 -->
+  <view class="section">
+    <view class="section-head">
+      <text class="section-title">食材</text>
+      <button class="btn btn-ghost add-btn" bindtap="addItem" data-category="食材">＋ 添加</button>
+    </view>
+    <view class="item-card" wx:for="{{food}}" wx:key="id" wx:for-item="item">
+      <view class="item-top">
+        <input class="input item-name" value="{{item.name}}" data-id="{{item.id}}" data-field="name" bindinput="updateItem" placeholder="名称" />
+        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">🗑</view>
+      </view>
+      <view class="item-mid">
+        <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
+        <picker class="item-picker" range="{{unitLabels}}" data-id="{{item.id}}" bindchange="onUnitChange">
+          <view class="picker-value">{{item.unitLabel}}</view>
+        </picker>
+        <picker class="item-picker" range="{{categories}}" data-id="{{item.id}}" bindchange="onCategoryChange">
+          <view class="picker-value">{{item.category}}</view>
+        </picker>
+      </view>
+      <view class="item-bottom">
+        <view class="icon-btn" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">↑</view>
+        <view class="icon-btn" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">↓</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 调味料 -->
+  <view class="section">
+    <view class="section-head">
+      <text class="section-title">调味料</text>
+      <button class="btn btn-ghost add-btn" bindtap="addItem" data-category="调味料">＋ 添加</button>
+    </view>
+    <view class="item-card" wx:for="{{seasoning}}" wx:key="id" wx:for-item="item">
+      <view class="item-top">
+        <input class="input item-name" value="{{item.name}}" data-id="{{item.id}}" data-field="name" bindinput="updateItem" placeholder="名称" />
+        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">🗑</view>
+      </view>
+      <view class="item-mid">
+        <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
+        <picker class="item-picker" range="{{unitLabels}}" data-id="{{item.id}}" bindchange="onUnitChange">
+          <view class="picker-value">{{item.unitLabel}}</view>
+        </picker>
+        <picker class="item-picker" range="{{categories}}" data-id="{{item.id}}" bindchange="onCategoryChange">
+          <view class="picker-value">{{item.category}}</view>
+        </picker>
+      </view>
+      <view class="item-bottom">
+        <view class="icon-btn" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">↑</view>
+        <view class="icon-btn" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">↓</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 做法 / 备注 -->
+  <view class="field">
+    <text class="field-label">做法步骤</text>
+    <textarea class="textarea" value="{{draft.method}}" data-field="method" bindinput="onFieldInput" placeholder="每行写一步，实际做饭时更容易扫读。" />
+  </view>
+  <view class="field">
+    <text class="field-label">原始文本 / 备注</text>
+    <textarea class="textarea" value="{{draft.rawText}}" data-field="rawText" bindinput="onFieldInput" placeholder="口味、替换食材、提前准备事项" />
+  </view>
+
+  <view class="form-actions">
+    <button class="btn btn-primary btn-block" bindtap="save" disabled="{{!draft.title}}">保存食谱</button>
+    <button class="btn btn-ghost btn-block" bindtap="cancel">取消</button>
+  </view>
+</view>

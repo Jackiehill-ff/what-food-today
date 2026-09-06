@@ -1,0 +1,74 @@
+<view class="page">
+  <view class="section-header">
+    <text class="section-title">采购清单</text>
+    <view class="top-actions">
+      <button class="btn btn-ghost small" bindtap="openManual">手动添加</button>
+      <button class="btn btn-ghost small" bindtap="batchDelete">批量删除</button>
+      <button class="btn btn-ghost small" bindtap="copyList">复制清单</button>
+    </view>
+  </view>
+
+  <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
+
+  <view class="empty" wx:if="{{items.length === 0}}">
+    <text class="empty-title">采购清单还是空的</text>
+    <text class="empty-text">在菜单计划选完菜后勾选食材，或点上方「手动添加」。</text>
+  </view>
+
+  <view class="shop-list">
+    <view
+      class="shop-item {{item.checked ? 'checked' : ''}}"
+      wx:for="{{items}}"
+      wx:key="id"
+      wx:for-item="item"
+      bindtap="toggleItem"
+      data-id="{{item.id}}"
+    >
+      <view class="checkbox {{item.checked ? 'checked' : ''}}">{{item.checked ? '✓' : ''}}</view>
+      <text class="dot">{{item.categoryShort}}</text>
+      <view class="shop-main">
+        <text class="shop-name {{item.checked ? 'done' : ''}}">{{item.name}}</text>
+        <text class="shop-amount">{{item.amountLabel}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 手动添加弹窗 -->
+  <view class="modal-mask" wx:if="{{manualOpen}}" bindtap="closeManual">
+    <view class="modal" catchtap="noop">
+      <view class="modal-header">
+        <view class="modal-title">手动添加</view>
+        <view class="icon-btn" bindtap="closeManual">✕</view>
+      </view>
+
+      <view class="modal-body">
+        <view class="field">
+          <text class="field-label">名称</text>
+          <input class="input" value="{{manual.name}}" data-field="name" bindinput="onManualInput" placeholder="例如：鸡蛋" />
+        </view>
+        <view class="field-row">
+          <view class="field">
+            <text class="field-label">数量</text>
+            <input class="input" value="{{manual.amount}}" data-field="amount" bindinput="onManualInput" placeholder="数量" />
+          </view>
+          <view class="field">
+            <text class="field-label">单位</text>
+            <picker range="{{unitLabels}}" bindchange="onManualUnit">
+              <view class="picker-value">{{manual.unit || '无'}}</view>
+            </picker>
+          </view>
+        </view>
+        <view class="field">
+          <text class="field-label">分类</text>
+          <picker range="{{categories}}" bindchange="onManualCategory">
+            <view class="picker-value">{{manual.category}}</view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="btn btn-primary btn-block" bindtap="addManual" disabled="{{!manual.name}}">添加</button>
+      </view>
+    </view>
+  </view>
+</view>

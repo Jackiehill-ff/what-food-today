@@ -1,0 +1,155 @@
+.page {
+  padding: 24rpx;
+  padding-bottom: 60rpx;
+}
+
+.add-btn {
+  min-height: 64rpx;
+  font-size: 26rpx;
+  padding: 0 24rpx;
+}
+
+.search-box {
+  margin-bottom: 16rpx;
+}
+
+.category-scroll {
+  white-space: nowrap;
+  margin-bottom: 20rpx;
+}
+
+.category-filters {
+  display: inline-flex;
+  gap: 12rpx;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56rpx;
+  padding: 0 26rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.chip.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: #f8fbf8;
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.feed-card {
+  background: var(--card);
+  border-radius: 18rpx;
+  box-shadow: 0 2rpx 12rpx rgba(29, 37, 33, 0.04);
+  overflow: hidden;
+}
+
+.feed-main {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 20rpx;
+}
+
+.feed-thumb {
+  width: 168rpx;
+  height: 168rpx;
+}
+
+.feed-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-title {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.feed-summary {
+  font-size: 24rpx;
+  color: var(--muted);
+  margin-top: 6rpx;
+}
+
+.chevron {
+  font-size: 22rpx;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.feed-detail {
+  padding: 0 20rpx 20rpx;
+  border-top: 1px solid var(--border);
+  padding-top: 16rpx;
+}
+
+.method-block {
+  margin-bottom: 16rpx;
+}
+
+.method-title {
+  font-size: 24rpx;
+  color: var(--muted);
+  margin-bottom: 6rpx;
+}
+
+.method-block text {
+  font-size: 26rpx;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feed-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.menu-add {
+  position: relative;
+}
+
+.icon-btn {
+  font-size: 30rpx;
+}
+
+.icon-btn.danger {
+  color: var(--danger);
+}
+
+.menu-add-options {
+  position: absolute;
+  left: 0;
+  top: 72rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12rpx;
+  box-shadow: 0 6rpx 20rpx rgba(29, 37, 33, 0.12);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.menu-add-options button {
+  padding: 16rpx 32rpx;
+  font-size: 26rpx;
+  text-align: left;
+  min-width: 160rpx;
+}
+
+.menu-add-options button + button {
+  border-top: 1px solid var(--border);
+}

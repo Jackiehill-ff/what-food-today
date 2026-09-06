@@ -1,0 +1,58 @@
+{
+  "pages": [
+    "pages/plan/plan",
+    "pages/import/import",
+    "pages/recipes/recipes",
+    "pages/recipe-edit/recipe-edit",
+    "pages/shopping/shopping",
+    "pages/me/me"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#f6f2ec",
+    "navigationBarTitleText": "今天吃啥？",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f2ec",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8a928b",
+    "selectedColor": "#254139",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/plan/plan",
+        "text": "菜单计划",
+        "iconPath": "images/tabbar/plan-normal.png",
+        "selectedIconPath": "images/tabbar/plan-selected.png"
+      },
+      {
+        "pagePath": "pages/import/import",
+        "text": "导入中心",
+        "iconPath": "images/tabbar/import-normal.png",
+        "selectedIconPath": "images/tabbar/import-selected.png"
+      },
+      {
+        "pagePath": "pages/recipes/recipes",
+        "text": "食谱库",
+        "iconPath": "images/tabbar/recipes-normal.png",
+        "selectedIconPath": "images/tabbar/recipes-selected.png"
+      },
+      {
+        "pagePath": "pages/shopping/shopping",
+        "text": "采购清单",
+        "iconPath": "images/tabbar/shopping-normal.png",
+        "selectedIconPath": "images/tabbar/shopping-selected.png"
+      },
+      {
+        "pagePath": "pages/me/me",
+        "text": "我的",
+        "iconPath": "images/tabbar/me-normal.png",
+        "selectedIconPath": "images/tabbar/me-selected.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
+}

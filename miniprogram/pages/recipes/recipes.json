@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "食谱库",
+  "usingComponents": {
+    "ingredient-popup": "/components/ingredient-popup/ingredient-popup"
+  }
+}

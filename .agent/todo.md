@@ -1,5 +1,19 @@
 # Todo
 
+## 当前分支：Mini-V1（微信小程序 + 账号登录）
+
+- [x] 新建分支 `Mini-V1`（AppID `wx603e02387ba0a6e0`）。
+- [x] 确认路线：基于主分支最新 APP 版原生微信小程序重写 + 微信一键登录（云开发）。
+- [x] 生成小程序图标（黄底 `#f8d46b` + 深绿 `#254139` 汤碗简笔画）+ tabBar 图标。
+- [x] 搭建小程序骨架（project.config.json/app.json/app.wxss/sitemap.json）。
+- [x] 移植领域与数据层（utils/domain/*、storage、images 落盘）。
+- [x] 微信一键登录云函数（login/saveProfile）+ 客户端。
+- [x] 实现五个 tab 页 + 食谱编辑页（含食材勾选弹窗组件）。
+- [x] 语法校验（JS/JSON 全部通过）；`docs/miniprogram-launch.md` 上线指南。
+- [ ] 在微信开发者工具内导入联调（开通云开发、建 `users` 集合、部署云函数、真机预览）。
+- [ ] 上传小程序图标（公众平台设置 → 小程序头像，用 assets/brand/app-icon-144.png）。
+- [ ] （后续轮次）拖动排序替代上移/下移；接入微信 OCR 插件；云同步。
+
 ## 已完成（2026-09-05 发布收尾清理）
 
 - [x] 删除过程性文件：`scripts/recipe-images/`（搜索映射 search-results.json、flomo 映射 flomo-images.json、41MB cache）、`dist/`、`android/app/build`、`android/.gradle`；flomo 映射可随时用 `extract-flomo-images.mjs` 重新生成。

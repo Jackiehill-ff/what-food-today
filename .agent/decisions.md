@@ -80,3 +80,14 @@
 - App 内上传图片用 canvas 压缩后再存，`saveAppState` 捕获 localStorage 配额异常（console.error），超限不再抛错打断应用。
 - 采购清单排序改为「未勾选按分类+时间在前，已勾选按勾选时间垫底」：边买边勾的场景下，最新勾掉的沉底，剩余要买的始终在视野内；`checkedAt` 只在勾选动作时写入。
 - 菜单计划排序用 pointer 事件实现拖拽（鼠标/触屏通用），不用 HTML5 DnD（Android WebView 触屏不触发）。
+
+## 微信小程序（Mini-V1，2026-09-06）
+
+- 分支 `Mini-V1` 基于主分支最新 APP 版，用**原生微信小程序**（WXML/WXSS/JS，CommonJS）重写，不基于网页版套壳、不用 Taro/uni-app。
+- AppID：`wx603e02387ba0a6e0`；平台确认为微信小程序。
+- 登录采用**微信一键登录**，后端用**微信云开发**（云函数 `login` 用 `cloud.getWXContext().OPENID` 识别用户，无需在代码里处理 AppSecret）；用户资料（昵称/头像）存云数据库 `users` 集合。未开通云开发时应用自动降级为纯本地模式，不阻断现有功能。
+- 数据本地优先：`utils/storage.js` 沿用主分支 `meal-planner-app-v1` 数据键与迁移逻辑（食谱/菜单/采购/导入记录），云同步留待后续轮次。
+- **食谱不预置、不打包**：`recipes.json` 不进小程序，用户通过「导入中心（粘贴文本解析）」或「我的 → 数据 → 导入（聊天文件）」自行导入。
+- 小程序单个 storage key 上限约 1MB，主分支把成品图 base64 嵌在 JSON 里的做法会超限；因此 `utils/images.js` 保存时把 data URL 落盘为本地文件、storage 只存路径，导出时再读回 base64 保证跨设备可导入。
+- 小程序图标 = 导航栏品牌图标（黄底 `#f8d46b` + 深绿 `#254139` 汤碗简笔画），源文件 `assets/brand/app-icon.svg`，上传用 `app-icon-144.png` / `app-icon-1024.png`；tabBar 五个图标由 lucide 同源路径生成（`miniprogram/images/tabbar/`）。
+- 菜单计划排序 v1 先用「⋮ 菜单内上移/下移」实现，拖拽排序作为后续增强；OCR 文字识别因小程序需接微信 OCR 插件暂未接入（主分支用 tesseract.js，浏览器环境不可复用到小程序）。

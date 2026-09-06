@@ -1,0 +1,75 @@
+<view class="page">
+  <view class="day-controls">
+    <button class="btn btn-ghost day-btn" bindtap="prevDay">前一天</button>
+    <view class="day-header">{{dayHeader}}</view>
+    <button class="btn btn-ghost day-btn" bindtap="nextDay">后一天</button>
+  </view>
+
+  <button class="today-btn" wx:if="{{!isToday}}" bindtap="goToday">回到今天</button>
+
+  <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
+
+  <view class="plan-list">
+    <view class="empty" wx:if="{{planned.length === 0}}">
+      <text class="empty-title">这一天还没有安排</text>
+      <text class="empty-text">在下方搜索食谱，选择后会弹出食材勾选，可直接加入采购清单。</text>
+    </view>
+
+    <view class="plan-card" wx:for="{{planned}}" wx:key="id" wx:for-item="recipe">
+      <view class="thumb plan-thumb {{recipe.image ? '' : 'thumb-placeholder'}}">
+        <image wx:if="{{recipe.image}}" class="thumb-img" src="{{recipe.image}}" mode="aspectFill" />
+        <text wx:else class="thumb-emoji">🥣</text>
+      </view>
+      <view class="plan-main">
+        <view class="plan-title">{{recipe.title}}</view>
+        <view class="plan-count">{{recipe.countLabel}}</view>
+      </view>
+      <view class="icon-btn more-btn" bindtap="toggleMenu" data-id="{{recipe.id}}">⋮</view>
+
+      <view class="plan-menu" wx:if="{{openMenuId === recipe.id}}">
+        <view class="method-block">
+          <view class="method-title">做法</view>
+          <text class="{{recipe.method ? '' : 'muted'}}">{{recipe.method || '暂无做法'}}</text>
+        </view>
+        <view class="menu-row">
+          <button class="btn btn-ghost menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="-1">↑ 上移</button>
+          <button class="btn btn-ghost menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="1">↓ 下移</button>
+        </view>
+        <view class="menu-row">
+          <picker class="menu-date" mode="date" value="{{planDate}}" bindchange="onMenuChangeDate" data-id="{{recipe.id}}">
+            <view class="btn btn-ghost menu-small">修改时间</view>
+          </picker>
+          <button class="btn btn-ghost menu-small danger" bindtap="removeRecipe" data-id="{{recipe.id}}">删除</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="picker-panel">
+    <input
+      class="input plan-input"
+      value="{{planSearch}}"
+      bindinput="onSearchInput"
+      placeholder="想吃什么就告诉我，别客气！"
+      confirm-type="search"
+    />
+    <view wx:if="{{hasQuery}}" class="picker-results">
+      <view class="empty picker-empty" wx:if="{{searchResults.length === 0}}">
+        <text class="empty-text">没有匹配的食谱</text>
+      </view>
+      <button
+        class="picker-item"
+        wx:for="{{searchResults}}"
+        wx:key="id"
+        wx:for-item="item"
+        bindtap="addRecipe"
+        data-id="{{item.id}}"
+      >
+        {{item.title}}
+      </button>
+    </view>
+  </view>
+
+  <!-- 食材勾选弹窗 -->
+  <ingredient-popup visible="{{popupVisible}}" recipe="{{popupRecipe}}" bind:close="onPopupClose" bind:add="onPopupAdd" />
+</view>

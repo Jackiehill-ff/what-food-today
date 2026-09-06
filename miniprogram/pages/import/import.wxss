@@ -1,0 +1,82 @@
+.page {
+  padding: 24rpx;
+  padding-bottom: 80rpx;
+}
+
+.hint {
+  font-size: 24rpx;
+  color: var(--muted);
+  margin-bottom: 16rpx;
+}
+
+.import-input {
+  min-height: 280rpx;
+  margin-bottom: 20rpx;
+}
+
+.draft-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 24rpx;
+}
+
+.draft-card {
+  background: var(--card);
+  border-radius: 18rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(29, 37, 33, 0.04);
+}
+
+.draft-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.warning {
+  font-size: 22rpx;
+  color: var(--danger);
+  background: #f8ece7;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-bottom: 20rpx;
+}
+
+.field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-label {
+  font-size: 26rpx;
+  color: var(--muted);
+}
+
+.add-btn {
+  min-height: 56rpx;
+  font-size: 24rpx;
+  padding: 0 16rpx;
+}
+
+.ingredient-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.ingredient-row .input {
+  flex: 1;
+}
+
+.save-btn {
+  margin-top: 32rpx;
+}

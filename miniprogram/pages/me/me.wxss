@@ -1,0 +1,128 @@
+.page {
+  padding: 24rpx;
+  padding-bottom: 60rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.sync-tag {
+  font-size: 24rpx;
+  color: var(--muted);
+  background: #eef3ee;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.avatar-btn {
+  flex-shrink: 0;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  display: block;
+}
+
+.avatar-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52rpx;
+  background: var(--yellow);
+  color: var(--green);
+}
+
+.profile-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.nickname-input {
+  font-size: 30rpx;
+}
+
+.openid {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--muted);
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.row-actions .btn {
+  flex: 1;
+  min-width: 180rpx;
+}
+
+.login-btn {
+  margin-top: 8rpx;
+}
+
+.panel-msg {
+  font-size: 24rpx;
+  color: var(--green);
+}
+
+.stats {
+  display: flex;
+  gap: 16rpx;
+}
+
+.stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20rpx 0;
+  background: #f7f4ee;
+  border-radius: 14rpx;
+}
+
+.stat-num {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--green);
+}
+
+.stat-label {
+  font-size: 24rpx;
+  color: var(--muted);
+}
+
+.feedback-input {
+  min-height: 160rpx;
+}
