@@ -10,29 +10,13 @@
   gap: 16rpx;
 }
 
-.day-btn {
-  flex-shrink: 0;
-  min-height: 64rpx;
-  padding: 0 20rpx;
-  font-size: 26rpx;
-}
-
-.day-header {
+.day-controls .day-header {
   flex: 1;
   text-align: center;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: var(--green);
 }
 
 .today-btn {
   margin-top: 16rpx;
-  min-height: 56rpx;
-  padding: 0 24rpx;
-  font-size: 24rpx;
-  border-radius: 999rpx;
-  background: #eef3ee;
-  color: var(--green);
 }
 
 .plan-list {
@@ -46,21 +30,17 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 20rpx;
   flex-wrap: wrap;
+  padding: 28rpx;
+  border: 1px solid var(--border);
+  border-radius: 16rpx;
   background: var(--card);
-  border-radius: 18rpx;
-  padding: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(29, 37, 33, 0.04);
 }
 
 .plan-thumb {
   width: 112rpx;
   height: 112rpx;
-}
-
-.thumb-emoji {
-  font-size: 48rpx;
 }
 
 .plan-main {
@@ -69,28 +49,24 @@
 }
 
 .plan-title {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .plan-count {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: var(--muted);
   margin-top: 4rpx;
-}
-
-.more-btn {
-  font-size: 36rpx;
 }
 
 .plan-menu {
   width: 100%;
   margin-top: 8rpx;
   padding-top: 16rpx;
-  border-top: 1px solid var(--border);
+  border-top: 1px dashed #e1e7df;
 }
 
 .method-block {
@@ -99,14 +75,17 @@
 
 .method-title {
   font-size: 24rpx;
-  color: var(--muted);
+  color: var(--day-ink);
   margin-bottom: 6rpx;
 }
 
 .method-block text {
   font-size: 26rpx;
+  color: #33453c;
+  line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .menu-row {
@@ -117,14 +96,11 @@
 
 .menu-small {
   flex: 1;
-  min-height: 60rpx;
-  font-size: 24rpx;
-  padding: 0 12rpx;
 }
 
 .menu-small.danger {
   color: var(--danger);
-  border-color: #ecd7d2;
+  border-color: #e6d4cf;
 }
 
 .menu-date {
@@ -135,10 +111,6 @@
   margin-top: 32rpx;
 }
 
-.plan-input {
-  font-size: 28rpx;
-}
-
 .picker-results {
   margin-top: 12rpx;
   display: flex;
@@ -146,17 +118,15 @@
   gap: 10rpx;
 }
 
-.picker-empty {
-  padding: 24rpx;
-}
-
 .picker-item {
   width: 100%;
-  min-height: 80rpx;
+  min-height: 64rpx;
   padding: 0 24rpx;
   text-align: left;
   background: var(--card);
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   font-size: 28rpx;
   border: 1px solid var(--border);
+  color: var(--ghost-ink);
+  overflow-wrap: anywhere;
 }

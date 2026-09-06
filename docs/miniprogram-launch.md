@@ -18,6 +18,8 @@
 2. AppID 会自动带出 `wx603e02387ba0a6e0`；若提示填写，手动填入。
 3. 点击「确定」，工具会用基础库编译 `miniprogram/`。
 
+> 也可以直接导入 `miniprogram/` 目录（代码本身就在该目录下）。`miniprogram/project.config.json` 已配好 `cloudfunctionRoot: "../cloudfunctions/"`，两种导入方式都能找到云函数。
+
 ## 三、开通云开发并部署登录云函数
 
 1. 在开发者工具顶部点「云开发」，首次需开通并创建一个环境（免费额度够个人用）。

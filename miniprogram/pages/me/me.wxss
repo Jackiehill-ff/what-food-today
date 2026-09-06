@@ -19,17 +19,17 @@
 }
 
 .panel-title {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 700;
-  color: var(--green);
+  color: var(--text);
 }
 
 .sync-tag {
-  font-size: 24rpx;
-  color: var(--muted);
-  background: #eef3ee;
+  font-size: 22rpx;
+  color: #203d33;
+  background: var(--yellow);
   padding: 4rpx 16rpx;
-  border-radius: 999rpx;
+  border-radius: 16rpx;
 }
 
 .profile-row {
@@ -57,9 +57,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 52rpx;
   background: var(--yellow);
-  color: var(--green);
+}
+
+.avatar-empty .avatar-icon {
+  width: 56rpx;
+  height: 56rpx;
 }
 
 .profile-main {
@@ -94,7 +97,7 @@
 
 .panel-msg {
   font-size: 24rpx;
-  color: var(--green);
+  color: var(--primary-dark);
 }
 
 .stats {
@@ -109,13 +112,13 @@
   align-items: center;
   padding: 20rpx 0;
   background: #f7f4ee;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
 }
 
 .stat-num {
   font-size: 40rpx;
   font-weight: 700;
-  color: var(--green);
+  color: var(--brand);
 }
 
 .stat-label {

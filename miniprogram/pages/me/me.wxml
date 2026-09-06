@@ -14,7 +14,9 @@
       <view class="profile-row">
         <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
           <image wx:if="{{avatarUrl}}" class="avatar" src="{{avatarUrl}}" mode="aspectFill" />
-          <view wx:else class="avatar avatar-empty">🥣</view>
+          <view wx:else class="avatar avatar-empty">
+            <image class="avatar-icon" src="/images/icons/soup-brand.png" />
+          </view>
         </button>
         <view class="profile-main">
           <input

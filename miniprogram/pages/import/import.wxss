@@ -6,6 +6,7 @@
 .hint {
   font-size: 24rpx;
   color: var(--muted);
+  line-height: 1.5;
   margin-bottom: 16rpx;
 }
 
@@ -22,10 +23,10 @@
 }
 
 .draft-card {
+  padding: 28rpx;
+  border: 1px solid var(--border);
+  border-radius: 16rpx;
   background: var(--card);
-  border-radius: 18rpx;
-  padding: 24rpx;
-  box-shadow: 0 2rpx 12rpx rgba(29, 37, 33, 0.04);
 }
 
 .draft-head {
@@ -35,12 +36,18 @@
   margin-bottom: 16rpx;
 }
 
+.draft-title {
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
 .warning {
   font-size: 22rpx;
-  color: var(--danger);
-  background: #f8ece7;
+  color: #8a4d16;
+  background: #fbe8c9;
   padding: 4rpx 14rpx;
-  border-radius: 999rpx;
+  border-radius: 16rpx;
+  font-weight: 700;
 }
 
 .field {
@@ -58,13 +65,8 @@
 
 .field-label {
   font-size: 26rpx;
-  color: var(--muted);
-}
-
-.add-btn {
-  min-height: 56rpx;
-  font-size: 24rpx;
-  padding: 0 16rpx;
+  color: var(--label);
+  font-weight: 600;
 }
 
 .ingredient-row {

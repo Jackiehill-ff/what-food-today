@@ -38,7 +38,6 @@ Page({
     const items = sortShoppingItems(state.shoppingItems).map((item) => ({
       ...item,
       amountLabel: [item.amount, item.unit].filter(Boolean).join("") || "适量",
-      categoryShort: item.category === "调味料" ? "调" : "食",
     }));
     this.setData({ items });
   },

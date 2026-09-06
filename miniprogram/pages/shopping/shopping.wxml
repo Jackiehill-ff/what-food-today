@@ -2,9 +2,9 @@
   <view class="section-header">
     <text class="section-title">采购清单</text>
     <view class="top-actions">
-      <button class="btn btn-ghost small" bindtap="openManual">手动添加</button>
-      <button class="btn btn-ghost small" bindtap="batchDelete">批量删除</button>
-      <button class="btn btn-ghost small" bindtap="copyList">复制清单</button>
+      <button class="btn btn-ghost btn-sm" bindtap="openManual">手动添加</button>
+      <button class="btn btn-ghost btn-sm" bindtap="batchDelete">批量删除</button>
+      <button class="btn btn-ghost btn-sm" bindtap="copyList">复制清单</button>
     </view>
   </view>
 
@@ -24,8 +24,10 @@
       bindtap="toggleItem"
       data-id="{{item.id}}"
     >
-      <view class="checkbox {{item.checked ? 'checked' : ''}}">{{item.checked ? '✓' : ''}}</view>
-      <text class="dot">{{item.categoryShort}}</text>
+      <view class="checkbox {{item.checked ? 'checked' : ''}}">
+        <image wx:if="{{item.checked}}" class="ic" src="/images/icons/check-white.png" />
+      </view>
+      <text class="dot">{{item.category}}</text>
       <view class="shop-main">
         <text class="shop-name {{item.checked ? 'done' : ''}}">{{item.name}}</text>
         <text class="shop-amount">{{item.amountLabel}}</text>
@@ -38,7 +40,9 @@
     <view class="modal" catchtap="noop">
       <view class="modal-header">
         <view class="modal-title">手动添加</view>
-        <view class="icon-btn" bindtap="closeManual">✕</view>
+        <view class="icon-btn" bindtap="closeManual">
+          <image class="ic ic-16" src="/images/icons/close.png" />
+        </view>
       </view>
 
       <view class="modal-body">

@@ -1,14 +1,17 @@
 <view class="page">
   <view class="section-header">
     <text class="section-title">食谱库</text>
-    <button class="btn btn-primary add-btn" bindtap="startNew">＋ 新增食谱</button>
+    <button class="btn btn-primary btn-sm" bindtap="startNew">
+      <image class="ic ic-14" src="/images/icons/plus-white.png" />新增食谱
+    </button>
   </view>
 
   <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
 
   <view class="search-box">
+    <image class="ic ic-17" src="/images/icons/search.png" />
     <input
-      class="input"
+      class="search-input"
       value="{{recipeSearch}}"
       bindinput="onSearchInput"
       placeholder="搜索标题、分类、食材"
@@ -42,13 +45,16 @@
       <view class="feed-main" bindtap="toggleExpand" data-id="{{recipe.id}}">
         <view class="thumb feed-thumb {{recipe.image ? '' : 'thumb-placeholder'}}">
           <image wx:if="{{recipe.image}}" class="thumb-img" src="{{recipe.image}}" mode="aspectFill" />
-          <text wx:else class="thumb-emoji">🥣</text>
+          <image wx:else class="thumb-icon" src="/images/icons/soup-placeholder.png" />
         </view>
         <view class="feed-text">
           <view class="feed-title">{{recipe.title}}</view>
           <view class="feed-summary">{{recipe.summary || '暂无食材'}}</view>
         </view>
-        <view class="chevron">{{expandedId === recipe.id ? '▲' : '▼'}}</view>
+        <image
+          class="ic ic-18 chevron"
+          src="{{expandedId === recipe.id ? '/images/icons/chevron-up.png' : '/images/icons/chevron-down.png'}}"
+        />
       </view>
 
       <view class="feed-detail" wx:if="{{expandedId === recipe.id}}">
@@ -58,14 +64,20 @@
         </view>
         <view class="feed-actions">
           <view class="menu-add">
-            <view class="icon-btn" bindtap="toggleMenuPicker" data-id="{{recipe.id}}">＋</view>
+            <view class="icon-btn sm" bindtap="toggleMenuPicker" data-id="{{recipe.id}}">
+              <image class="ic ic-16" src="/images/icons/calendar-plus.png" />
+            </view>
             <view class="menu-add-options" wx:if="{{menuPickerId === recipe.id}}">
               <button bindtap="addToDate" data-id="{{recipe.id}}" data-date="{{todayKey}}">今天</button>
               <button bindtap="addToDate" data-id="{{recipe.id}}" data-date="{{tomorrowKey}}">明天</button>
             </view>
           </view>
-          <view class="icon-btn" bindtap="editRecipe" data-id="{{recipe.id}}">✎</view>
-          <view class="icon-btn danger" bindtap="deleteRecipe" data-id="{{recipe.id}}">🗑</view>
+          <view class="icon-btn sm" bindtap="editRecipe" data-id="{{recipe.id}}">
+            <image class="ic ic-16" src="/images/icons/edit.png" />
+          </view>
+          <view class="icon-btn sm danger" bindtap="deleteRecipe" data-id="{{recipe.id}}">
+            <image class="ic ic-16" src="/images/icons/trash.png" />
+          </view>
         </view>
       </view>
     </view>

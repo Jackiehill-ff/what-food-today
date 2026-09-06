@@ -3,11 +3,11 @@
   <view class="image-editor">
     <view class="thumb edit-thumb {{draft.image ? '' : 'thumb-placeholder'}}">
       <image wx:if="{{draft.image}}" class="thumb-img" src="{{draft.image}}" mode="aspectFill" />
-      <text wx:else class="thumb-emoji">🥣</text>
+      <image wx:else class="thumb-icon" src="/images/icons/soup-placeholder.png" />
     </view>
     <view class="image-actions">
-      <button class="btn btn-ghost" bindtap="chooseImage">{{draft.image ? '换一张' : '上传成品图'}}</button>
-      <button class="btn btn-ghost danger" wx:if="{{draft.image}}" bindtap="removeImage">移除图片</button>
+      <button class="btn btn-ghost btn-sm" bindtap="chooseImage">{{draft.image ? '换一张' : '上传成品图'}}</button>
+      <button class="btn btn-ghost btn-sm danger" wx:if="{{draft.image}}" bindtap="removeImage">移除图片</button>
     </view>
   </view>
 
@@ -27,12 +27,16 @@
   <view class="section">
     <view class="section-head">
       <text class="section-title">食材</text>
-      <button class="btn btn-ghost add-btn" bindtap="addItem" data-category="食材">＋ 添加</button>
+      <button class="btn btn-ghost btn-sm" bindtap="addItem" data-category="食材">
+        <image class="ic ic-14" src="/images/icons/plus.png" />添加
+      </button>
     </view>
     <view class="item-card" wx:for="{{food}}" wx:key="id" wx:for-item="item">
       <view class="item-top">
         <input class="input item-name" value="{{item.name}}" data-id="{{item.id}}" data-field="name" bindinput="updateItem" placeholder="名称" />
-        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">🗑</view>
+        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">
+          <image class="ic ic-15" src="/images/icons/trash.png" />
+        </view>
       </view>
       <view class="item-mid">
         <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
@@ -44,8 +48,12 @@
         </picker>
       </view>
       <view class="item-bottom">
-        <view class="icon-btn" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">↑</view>
-        <view class="icon-btn" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">↓</view>
+        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">
+          <image class="ic ic-14" src="/images/icons/arrow-up.png" />
+        </view>
+        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">
+          <image class="ic ic-14" src="/images/icons/arrow-down.png" />
+        </view>
       </view>
     </view>
   </view>
@@ -54,12 +62,16 @@
   <view class="section">
     <view class="section-head">
       <text class="section-title">调味料</text>
-      <button class="btn btn-ghost add-btn" bindtap="addItem" data-category="调味料">＋ 添加</button>
+      <button class="btn btn-ghost btn-sm" bindtap="addItem" data-category="调味料">
+        <image class="ic ic-14" src="/images/icons/plus.png" />添加
+      </button>
     </view>
     <view class="item-card" wx:for="{{seasoning}}" wx:key="id" wx:for-item="item">
       <view class="item-top">
         <input class="input item-name" value="{{item.name}}" data-id="{{item.id}}" data-field="name" bindinput="updateItem" placeholder="名称" />
-        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">🗑</view>
+        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">
+          <image class="ic ic-15" src="/images/icons/trash.png" />
+        </view>
       </view>
       <view class="item-mid">
         <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
@@ -71,8 +83,12 @@
         </picker>
       </view>
       <view class="item-bottom">
-        <view class="icon-btn" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">↑</view>
-        <view class="icon-btn" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">↓</view>
+        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">
+          <image class="ic ic-14" src="/images/icons/arrow-up.png" />
+        </view>
+        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">
+          <image class="ic ic-14" src="/images/icons/arrow-down.png" />
+        </view>
       </view>
     </view>
   </view>

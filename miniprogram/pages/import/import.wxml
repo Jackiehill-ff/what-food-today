@@ -23,7 +23,7 @@
   <view class="draft-list">
     <view class="draft-card" wx:for="{{drafts}}" wx:key="id" wx:for-item="draft" wx:for-index="idx">
       <view class="draft-head">
-        <text class="section-title">预览 {{idx + 1}}</text>
+        <text class="draft-title">预览 {{idx + 1}}</text>
         <text class="warning" wx:if="{{draft.parseFailed}}">需补全</text>
       </view>
 
@@ -35,11 +35,15 @@
       <view class="field">
         <view class="field-head">
           <text class="field-label">食材</text>
-          <button class="btn btn-ghost add-btn" bindtap="addIngredient" data-draft-id="{{draft.id}}">＋ 添加</button>
+          <button class="btn btn-ghost btn-sm" bindtap="addIngredient" data-draft-id="{{draft.id}}">
+            <image class="ic ic-14" src="/images/icons/plus.png" />添加
+          </button>
         </view>
         <view class="ingredient-row" wx:for="{{draft.ingredients}}" wx:key="id" wx:for-item="item">
           <input class="input" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindinput="updateIngredient" placeholder="名称" />
-          <view class="icon-btn danger" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindtap="removeIngredient">🗑</view>
+          <view class="icon-btn danger" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindtap="removeIngredient">
+            <image class="ic ic-15" src="/images/icons/trash.png" />
+          </view>
         </view>
       </view>
 

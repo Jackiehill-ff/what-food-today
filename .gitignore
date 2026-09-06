@@ -22,3 +22,6 @@ scripts/flomo-export-*.txt
 
 # 食谱图片原始/压缩缓存（search-results.json 保留，可续跑补图）
 scripts/recipe-images/cache/
+
+# 微信开发者工具生成的私有配置
+project.private.config.json

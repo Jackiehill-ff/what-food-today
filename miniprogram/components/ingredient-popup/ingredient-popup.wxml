@@ -5,7 +5,9 @@
         <view class="modal-title">{{recipe.title}}</view>
         <view class="modal-subtitle">勾选缺少的食材，加入采购清单</view>
       </view>
-      <view class="icon-btn" bindtap="onClose">✕</view>
+      <view class="icon-btn" bindtap="onClose">
+        <image class="ic" src="/images/icons/close.png" />
+      </view>
     </view>
 
     <view class="modal-body">
@@ -21,8 +23,10 @@
         bindtap="toggleItem"
         data-id="{{item.id}}"
       >
-        <view class="checkbox {{item.checked ? 'checked' : ''}}">{{item.checked ? '✓' : ''}}</view>
-        <text class="dot">{{item.category === '调味料' ? '调' : '食'}}</text>
+        <view class="checkbox {{item.checked ? 'checked' : ''}}">
+          <image wx:if="{{item.checked}}" class="ic" src="/images/icons/check-white.png" />
+        </view>
+        <text class="dot">{{item.category}}</text>
         <view class="popup-item-main">
           <text class="popup-item-name">{{item.name}}</text>
           <text class="popup-item-amount">{{item.amount}}{{item.unit}} {{(!item.amount && !item.unit) ? '适量' : ''}}</text>
@@ -32,7 +36,9 @@
 
     <view class="modal-footer">
       <view class="select-all" bindtap="toggleAll">
-        <view class="checkbox {{allChecked ? 'checked' : ''}}">{{allChecked ? '✓' : ''}}</view>
+        <view class="checkbox {{allChecked ? 'checked' : ''}}">
+          <image wx:if="{{allChecked}}" class="ic" src="/images/icons/check-white.png" />
+        </view>
         <text>全选</text>
       </view>
       <button class="btn btn-primary" bindtap="onConfirm" disabled="{{selectedCount === 0}}">

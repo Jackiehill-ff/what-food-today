@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-06（Mini-V1 · UI 对齐原 APP）
+
+- 配色/字体/图标全面对齐原 APP `styles.css`：主色 `#2f6f57`、次级绿 `#2d4d42`、危险 `#a43e35`、弱化 `#66776d`，卡片 `#fbfcfa`+`#dfe5dc` 边框、输入 `#cfd8ce`、日期条 `#eef5ef`、状态条 `#e4eee5` 等逐一校正；字体补回 Inter + PingFang 等原栈。
+- 修复文字显示不全：菜谱卡片标题/摘要/做法/弹窗食材名去掉 `nowrap` 截断，改为换行 + `overflow-wrap: anywhere`；分类圆点「食/调」改回完整「食材/调味料」。
+- 搜索框、卡片、缩略图、按钮尺寸对齐原规格（搜索框图标+输入 38px、卡片 14px 内距/8px 圆角、缩略图 84/56px、按钮 38px）。
+- 用 lucide 同源路径生成线条图标（`miniprogram/images/icons/`）替换全部 emoji/符号（🥣→汤碗、⋮/✕/🗑/✎/＋/▲▼/↑↓ 等）；tabBar 图标重配色（`#66776d`/`#2f6f57`）。
+- `ingredient-popup` 组件改为自包含样式，规避组件样式隔离问题。
+- 补充 `project.private.config.json` 到 `.gitignore`；`miniprogram/project.config.json` 加 `cloudfunctionRoot` 支持直接导入 `miniprogram/` 目录。
+
 ## 2026-09-06（分支 Mini-V1：原生微信小程序重写 + 微信一键登录）
 
 - 新建分支 `Mini-V1`（AppID `wx603e02387ba0a6e0`），基于主分支最新 APP 版用原生微信小程序重写（WXML/WXSS/JS）。

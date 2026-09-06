@@ -1,11 +1,14 @@
 <view class="page">
   <view class="day-controls">
-    <button class="btn btn-ghost day-btn" bindtap="prevDay">前一天</button>
+    <button class="btn btn-ghost btn-sm" bindtap="prevDay">前一天</button>
     <view class="day-header">{{dayHeader}}</view>
-    <button class="btn btn-ghost day-btn" bindtap="nextDay">后一天</button>
+    <button class="btn btn-ghost btn-sm" bindtap="nextDay">后一天</button>
   </view>
 
-  <button class="today-btn" wx:if="{{!isToday}}" bindtap="goToday">回到今天</button>
+  <button class="btn btn-ghost btn-sm today-btn" wx:if="{{!isToday}}" bindtap="goToday">
+    <image class="ic ic-14" src="/images/icons/check.png" />
+    回到今天
+  </button>
 
   <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
 
@@ -18,13 +21,15 @@
     <view class="plan-card" wx:for="{{planned}}" wx:key="id" wx:for-item="recipe">
       <view class="thumb plan-thumb {{recipe.image ? '' : 'thumb-placeholder'}}">
         <image wx:if="{{recipe.image}}" class="thumb-img" src="{{recipe.image}}" mode="aspectFill" />
-        <text wx:else class="thumb-emoji">🥣</text>
+        <image wx:else class="thumb-icon sm" src="/images/icons/soup-placeholder.png" />
       </view>
       <view class="plan-main">
         <view class="plan-title">{{recipe.title}}</view>
         <view class="plan-count">{{recipe.countLabel}}</view>
       </view>
-      <view class="icon-btn more-btn" bindtap="toggleMenu" data-id="{{recipe.id}}">⋮</view>
+      <view class="icon-btn" bindtap="toggleMenu" data-id="{{recipe.id}}">
+        <image class="ic ic-16" src="/images/icons/more.png" />
+      </view>
 
       <view class="plan-menu" wx:if="{{openMenuId === recipe.id}}">
         <view class="method-block">
@@ -32,27 +37,36 @@
           <text class="{{recipe.method ? '' : 'muted'}}">{{recipe.method || '暂无做法'}}</text>
         </view>
         <view class="menu-row">
-          <button class="btn btn-ghost menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="-1">↑ 上移</button>
-          <button class="btn btn-ghost menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="1">↓ 下移</button>
+          <button class="btn btn-ghost btn-sm menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="-1">
+            <image class="ic ic-14" src="/images/icons/arrow-up.png" />上移
+          </button>
+          <button class="btn btn-ghost btn-sm menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="1">
+            <image class="ic ic-14" src="/images/icons/arrow-down.png" />下移
+          </button>
         </view>
         <view class="menu-row">
           <picker class="menu-date" mode="date" value="{{planDate}}" bindchange="onMenuChangeDate" data-id="{{recipe.id}}">
-            <view class="btn btn-ghost menu-small">修改时间</view>
+            <view class="btn btn-ghost btn-sm">修改时间</view>
           </picker>
-          <button class="btn btn-ghost menu-small danger" bindtap="removeRecipe" data-id="{{recipe.id}}">删除</button>
+          <button class="btn btn-ghost btn-sm menu-small danger" bindtap="removeRecipe" data-id="{{recipe.id}}">
+            <image class="ic ic-15" src="/images/icons/trash.png" />删除
+          </button>
         </view>
       </view>
     </view>
   </view>
 
   <view class="picker-panel">
-    <input
-      class="input plan-input"
-      value="{{planSearch}}"
-      bindinput="onSearchInput"
-      placeholder="想吃什么就告诉我，别客气！"
-      confirm-type="search"
-    />
+    <view class="search-box">
+      <image class="ic ic-17" src="/images/icons/search.png" />
+      <input
+        class="search-input"
+        value="{{planSearch}}"
+        bindinput="onSearchInput"
+        placeholder="想吃什么就告诉我，别客气！"
+        confirm-type="search"
+      />
+    </view>
     <view wx:if="{{hasQuery}}" class="picker-results">
       <view class="empty picker-empty" wx:if="{{searchResults.length === 0}}">
         <text class="empty-text">没有匹配的食谱</text>

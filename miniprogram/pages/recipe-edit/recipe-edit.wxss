@@ -40,7 +40,8 @@
 
 .field-label {
   font-size: 26rpx;
-  color: var(--muted);
+  color: var(--label);
+  font-weight: 600;
 }
 
 .section {
@@ -57,19 +58,14 @@
 .section-title {
   font-size: 30rpx;
   font-weight: 700;
-  color: var(--green);
-}
-
-.add-btn {
-  min-height: 60rpx;
-  font-size: 24rpx;
-  padding: 0 20rpx;
+  color: var(--text);
 }
 
 .item-card {
-  background: #faf8f4;
-  border-radius: 14rpx;
-  padding: 16rpx;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16rpx;
+  padding: 20rpx;
   margin-bottom: 14rpx;
 }
 
@@ -100,12 +96,16 @@
 
 .picker-value {
   padding: 14rpx 16rpx;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: 12rpx;
   background: #fff;
   font-size: 26rpx;
   text-align: center;
   color: var(--text);
+  min-height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .item-bottom {
