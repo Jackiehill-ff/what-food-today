@@ -15,7 +15,7 @@
 
   <view class="status-note" wx:if="{{importStatus}}">{{importStatus}}</view>
 
-  <view class="empty" wx:if="{{drafts.length === 0}}">
+  <view class="empty" wx:if="{{drafts.length == 0}}">
     <text class="empty-title">等待解析</text>
     <text class="empty-text">粘贴文本后先「解析」，再编辑预览保存。</text>
   </view>

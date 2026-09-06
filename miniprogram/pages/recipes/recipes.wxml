@@ -21,9 +21,9 @@
 
   <scroll-view class="category-scroll" scroll-x wx:if="{{categories.length > 0}}">
     <view class="category-filters">
-      <view class="chip {{recipeCategory === '' ? 'active' : ''}}" bindtap="onCategoryTap" data-category="">全部</view>
+      <view class="chip {{recipeCategory == '' ? 'active' : ''}}" bindtap="onCategoryTap" data-category="">全部</view>
       <view
-        class="chip {{recipeCategory === category ? 'active' : ''}}"
+        class="chip {{recipeCategory == category ? 'active' : ''}}"
         wx:for="{{categories}}"
         wx:key="*this"
         wx:for-item="category"
@@ -36,7 +36,7 @@
   </scroll-view>
 
   <view class="feed">
-    <view class="empty" wx:if="{{filtered.length === 0}}">
+    <view class="empty" wx:if="{{filtered.length == 0}}">
       <text class="empty-title">还没有食谱</text>
       <text class="empty-text">点右上角「新增食谱」创建一道常做菜，或到导入中心导入。</text>
     </view>
@@ -53,11 +53,11 @@
         </view>
         <image
           class="ic ic-18 chevron"
-          src="{{expandedId === recipe.id ? '/images/icons/chevron-up.png' : '/images/icons/chevron-down.png'}}"
+          src="{{expandedId == recipe.id ? '/images/icons/chevron-up.png' : '/images/icons/chevron-down.png'}}"
         />
       </view>
 
-      <view class="feed-detail" wx:if="{{expandedId === recipe.id}}">
+      <view class="feed-detail" wx:if="{{expandedId == recipe.id}}">
         <view class="method-block">
           <view class="method-title">做法</view>
           <text class="{{recipe.method ? '' : 'muted'}}">{{recipe.method || '暂无做法'}}</text>
@@ -67,7 +67,7 @@
             <view class="icon-btn sm" bindtap="toggleMenuPicker" data-id="{{recipe.id}}">
               <image class="ic ic-16" src="/images/icons/calendar-plus.png" />
             </view>
-            <view class="menu-add-options" wx:if="{{menuPickerId === recipe.id}}">
+            <view class="menu-add-options" wx:if="{{menuPickerId == recipe.id}}">
               <button bindtap="addToDate" data-id="{{recipe.id}}" data-date="{{todayKey}}">今天</button>
               <button bindtap="addToDate" data-id="{{recipe.id}}" data-date="{{tomorrowKey}}">明天</button>
             </view>

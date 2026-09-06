@@ -11,7 +11,7 @@
     </view>
 
     <view class="modal-body">
-      <view class="empty" wx:if="{{items.length === 0}}">
+      <view class="empty" wx:if="{{items.length == 0}}">
         <text class="empty-title">这个食谱还没有食材</text>
         <text class="empty-text">可以先加入菜单，之后在食谱库补全食材。</text>
       </view>
@@ -41,7 +41,7 @@
         </view>
         <text>全选</text>
       </view>
-      <button class="btn btn-primary" bindtap="onConfirm" disabled="{{selectedCount === 0}}">
+      <button class="btn btn-primary" bindtap="onConfirm" disabled="{{selectedCount == 0}}">
         加入已选{{selectedCount > 0 ? ' (' + selectedCount + ')' : ''}}
       </button>
     </view>

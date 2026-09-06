@@ -13,7 +13,7 @@
   <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
 
   <view class="plan-list">
-    <view class="empty" wx:if="{{planned.length === 0}}">
+    <view class="empty" wx:if="{{planned.length == 0}}">
       <text class="empty-title">这一天还没有安排</text>
       <text class="empty-text">在下方搜索食谱，选择后会弹出食材勾选，可直接加入采购清单。</text>
     </view>
@@ -31,7 +31,7 @@
         <image class="ic ic-16" src="/images/icons/more.png" />
       </view>
 
-      <view class="plan-menu" wx:if="{{openMenuId === recipe.id}}">
+      <view class="plan-menu" wx:if="{{openMenuId == recipe.id}}">
         <view class="method-block">
           <view class="method-title">做法</view>
           <text class="{{recipe.method ? '' : 'muted'}}">{{recipe.method || '暂无做法'}}</text>
@@ -68,7 +68,7 @@
       />
     </view>
     <view wx:if="{{hasQuery}}" class="picker-results">
-      <view class="empty picker-empty" wx:if="{{searchResults.length === 0}}">
+      <view class="empty picker-empty" wx:if="{{searchResults.length == 0}}">
         <text class="empty-text">没有匹配的食谱</text>
       </view>
       <button

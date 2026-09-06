@@ -10,7 +10,7 @@
 
   <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
 
-  <view class="empty" wx:if="{{items.length === 0}}">
+  <view class="empty" wx:if="{{items.length == 0}}">
     <text class="empty-title">采购清单还是空的</text>
     <text class="empty-text">在菜单计划选完菜后勾选食材，或点上方「手动添加」。</text>
   </view>
