@@ -1,9 +1,19 @@
 <view class="page">
+  <view class="page-header">
+    <view class="page-icon">
+      <image class="ic" src="/images/icons/user.png" />
+    </view>
+    <text class="page-title">我的</text>
+  </view>
+
   <!-- 账号 -->
   <view class="card panel">
     <view class="panel-head">
       <text class="panel-title">账号</text>
-      <text class="sync-tag">{{syncTagText}}</text>
+      <view class="head-right">
+        <text class="openid-inline" wx:if="{{openidMasked}}">{{openidMasked}}</text>
+        <text class="sync-tag">{{syncTagText}}</text>
+      </view>
     </view>
 
     <block wx:if="{{!isCloudEnabled}}">
@@ -12,26 +22,26 @@
 
     <block wx:elif="{{user}}">
       <view class="profile-row">
-        <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <button
+          class="avatar-btn"
+          style="width:96rpx;height:96rpx;margin:0;padding:0;"
+          open-type="chooseAvatar"
+          bindchooseavatar="onChooseAvatar"
+        >
           <image wx:if="{{avatarUrl}}" class="avatar" src="{{avatarUrl}}" mode="aspectFill" />
           <view wx:else class="avatar avatar-empty">
             <image class="avatar-icon" src="/images/icons/soup-brand.png" />
           </view>
         </button>
-        <view class="profile-main">
-          <input
-            class="input nickname-input"
-            type="nickname"
-            value="{{nickname}}"
-            bindinput="onNicknameInput"
-            placeholder="设置昵称"
-          />
-          <view class="openid">{{openidMasked}}</view>
-        </view>
-      </view>
-      <view class="row-actions">
-        <button class="btn btn-ghost" bindtap="saveProfileTap">保存资料</button>
-        <button class="btn btn-ghost danger" bindtap="logout">退出登录</button>
+        <input
+          class="input nickname-input"
+          type="nickname"
+          value="{{nickname}}"
+          bindinput="onNicknameInput"
+          bindblur="onNicknameBlur"
+          placeholder="设置昵称"
+        />
+        <button class="btn btn-ghost btn-sm logout-btn" bindtap="logout">退出登录</button>
       </view>
     </block>
 
@@ -50,11 +60,10 @@
     <view class="panel-head">
       <text class="panel-title">数据</text>
     </view>
-    <view class="muted">导出 JSON 备份，或从聊天文件（如 recipes.json）导入恢复。</view>
+    <view class="muted">导出备份，或从聊天文件（如 recipes.json）导入恢复。</view>
     <view class="row-actions">
-      <button class="btn btn-ghost" bindtap="exportData">导出 JSON</button>
+      <button class="btn btn-ghost" bindtap="exportData">导出</button>
       <button class="btn btn-ghost" bindtap="importData">导入</button>
-      <button class="btn btn-ghost" bindtap="createBackup">创建备份</button>
     </view>
     <view class="panel-msg" wx:if="{{dataStatus}}">{{dataStatus}}</view>
   </view>
@@ -77,25 +86,6 @@
         <text class="stat-num">{{stats.shopping}}</text>
         <text class="stat-label">采购项</text>
       </view>
-    </view>
-  </view>
-
-  <!-- 反馈 -->
-  <view class="card panel">
-    <view class="panel-head">
-      <text class="panel-title">反馈</text>
-    </view>
-    <view class="muted">写下建议或问题，提交到 GitHub Issues，或复制后自行发送。</view>
-    <textarea
-      class="textarea feedback-input"
-      value="{{feedbackText}}"
-      bindinput="onFeedbackInput"
-      placeholder="描述建议或遇到的问题…"
-      maxlength="500"
-    />
-    <view class="row-actions">
-      <button class="btn btn-ghost" bindtap="openGitHubIssue" disabled="{{!feedbackText}}">提交到 GitHub</button>
-      <button class="btn btn-ghost" bindtap="copyFeedback" disabled="{{!feedbackText}}">复制</button>
     </view>
   </view>
 </view>

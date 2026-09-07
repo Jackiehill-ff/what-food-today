@@ -1,5 +1,113 @@
 # Changelog
 
+## 2026-09-07（Mini-V1 · 洁癖收尾：文档同步 + 工作区盘点，未改代码）
+
+- `.agent/context.md`：概况改为双应用现状（main React 应用 / Mini-V1 小程序），新增「Mini-V1 小程序」章节（页面结构、领域层与存储键、云函数与登录降级、真机 JS 语法约束、原生 button UA 宽度规律、分享画布可见挂载、拖动排序 order 字段、品牌「计划有饭」、automator 联调要点、开发版本 1.0.0 已过期）。
+- `docs/miniprogram-launch.md`：第七节「实现边界与后续」刷新（长按拖动排序、分享菜单、添加置顶为已实现；OCR/备份/反馈为已移除；待做仅剩云同步）；引言补充 `cloudfunctions/feedback` 已部署未调用、待定下线。
+- `README.md`：Mini-V1 节 cloudfunctions 描述改为「微信一键登录与资料保存云函数」。
+- `.agent/todo.md`：删除 09-07 段误列的「新增云函数 feedback」（该函数为 09-06 第二轮产物，当晚反馈入口已整体取消，此处属错位重复）；修正底部「接入微信 OCR 插件」待办与「OCR 已整体移除」记录的矛盾（保留云同步待办）。
+- 盘点结论（未动，待用户确认）：37 个文件未提交；未跟踪文件中 `miniprogram/images/icons/copy{,-white}.png` 被 shopping.wxml 引用（新 clone 会缺图标）、`docs/visual-spec-v2.md` 为现役设计稿，需随下次提交入库；`docs/visual-spec.md`（已被 v2 取代）与 `miniprogram/project.config.json`（DevTools 重建残留，权威配置在仓库根）为删除候选；开发版本 1.0.0 需重新上传后才含本轮全部修复。
+- 清场执行（用户确认后）：删除 `docs/visual-spec.md`、`miniprogram/project.config.json`（并加入 .gitignore，防 DevTools 重建后再次混入）、`cloudfunctions/feedback/` 本地目录、/tmp 会话临时目录（wxauto、mptest）；云端 `feedback` 函数仍处于部署状态（改云端属部署动作，未动），需要时在云开发控制台手动下线。
+- 本批全部改动（含此前多轮未提交修复与新文档）已提交并推送 `origin/Mini-V1`。
+
+## 2026-09-07（Mini-V1 · 页头图标放大 / 采购清单拖动排序 / 分享图落款改字）
+
+- 页头图标放大：菜单计划、食谱库、采购清单三页头图标从 36rpx 放大到 52rpx（页面级 `.page-icon .ic` 覆盖）。原因：tabBar 同款图标字形只占画布约 56%，而「我的」页 user.png 字形占 83%，同尺寸下显得小；按占比折算 52rpx 后与「我的」页视觉一致（实测 27px vs 18px）。
+- 采购清单新增长按拖动排序（与菜单计划页同交互）：长按振动 → 拖动实时让位 → 松手落位并持久化。数据层（`utils/domain/shopping.js`）：采购项新增可选 `order` 手动顺序号；排序规则——已勾选仍排最后（按勾选时间）；未勾选中，有手动顺序的按 order 排在前，从未拖过的保持原「分类 → 添加时间」（旧数据零迁移）。新采购项（弹窗勾选加入 `shoppingOps.addSelectedToShopping` / 手动添加）自动带 `order = max+1` 接在清单尾部。页面层复制菜单计划的位移映射算法（`onItemLongPress/onItemTouchMove/onItemTouchEnd` + `.dragging` 样式），弹窗打开时禁止触发拖动。
+- 分享图落款改字：「共 N 道菜 · 计划有范 · 今天吃啥？」→「共 N 道菜 · 计划有饭」（品牌用字确认为米饭的「饭」；全库仅分享图落款一处出现品牌字样）。
+- 模拟器实测：三页图标 27px、「我的」18px；拖动第 1 项到第 3 位后杀页面重进顺序保持；分享图带新落款重新生成成功。截图 plan/recipes/shopping/share-preview 已更新。
+- 未改部署配置。
+
+## 2026-09-06（Mini-V1 · 页头图标对齐 tabBar / 图片按钮精简 / 添加置顶 / 分享菜单重做）
+
+- 页头图标：菜单计划、食谱库、采购清单三页的头像块图标换成与底部 tabBar 完全相同的图标（`images/tabbar/{plan,recipes,shopping}-selected.png`）。
+- 编辑食谱页图片按钮：「换一张」移除；无图时显示「上传成品图」、有图时显示「移除图片」，两态共用同一位置与同一 btn-sm 尺寸。
+- 添加食材/调味料：点击后新空白行出现在该类别最上面（编辑页 `addItem` 按类别 splice 到首位；导入页 `addIngredient` 同步改 unshift），不再是追加到列表末尾。
+- 分享菜单重做（修复真机不能生成）：
+  - 失败根因：①分享画布以 `position:fixed; left:-9999rpx` 离屏挂载，真机上不渲染导致 canvasToTempFilePath 失败；②生成后调用的 `wx.shareImageMessage` 并非真实存在的 API。
+  - 新交互（按需求）：点「分享菜单」先弹窗勾选当天菜单里的菜（复选框默认全选、可取消，显示已选数）→「生成分享图」→ 预览弹窗内直接显示画布渲染结果 → 「保存到相册」（wx.saveImageToPhotosAlbum）/「发给朋友」（wx.showShareImageMenu）。
+  - 新模板（无图、居中上下排列）：米白底 + 深绿品牌名「今天吃啥？」+ 日期 + 杏黄短装饰条；每道菜「菜名（粗体）+ 主要食材（顿号连接、最多两行、超出省略号）」，菜间浅色细分隔线；底部「共 N 道菜 · 计划有范 · 今天吃啥？」。画布 600 逻辑宽 × 2 倍 dpr，按内容自适应高度。
+  - 弹窗复用全局 .modal-mask/.modal/.checkbox 样式；底部按钮等分（两级类名压过原生 button 184px UA 宽）。
+- 解析器修复：带标签格式里「【2】蒜蓉西兰花」这类行，序号标记不再混入标题（isValidTitleLine/取标题统一先剥离【…】标记，纯标记行不是标题）；flomo 全量回归 124 条全部正常出标题。
+- 模拟器实测：三页图标已换、编辑页仅一个图片按钮、添加行置顶、分享流程勾选→生成→预览→导出全通（mock 相册保存返回「已保存到相册」证明 canvasToTempFilePath 成功）；截图更新 plan/recipes/shopping/me/share-select/share-preview/recipe-edit。
+- 未改部署配置。
+
+## 2026-09-06（Mini-V1 · 账号卡四轮微调：编码移至标签左侧/取消反馈栏）
+
+- 用户编码（openid 掩码）调到「已登录」状态标签左侧（标题行右端顺序：编码 → 已登录），实测 openid left:220、标签 left:314。
+- 「反馈」卡片整体取消：先已换成微信自带「意见反馈」（open-type=feedback），按用户要求连卡片一起移除，「我的」页现为 账号/数据/统计 三卡。me.js 上一轮已清理全部反馈代码，`cloudfunctions/feedback` 保留在仓库与云端、客户端不再调用（确认不要可下线）。
+- 模拟器实测通过，`docs/screenshots/me.png` 已更新；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 账号/数据/反馈三轮微调：编码入标题行/导出改名/微信原生反馈）
+
+- 账号卡排版：用户编码（openid 掩码）从昵称下方移到「账号」面板标题同一行（右侧与「已登录」标签并排，超长省略号截断）；昵称输入框与「退出登录」平行排列，整卡收为「标题行 + 单行头像/昵称/退出」两级结构。
+- 数据卡：「导出 JSON」按钮改名「导出」，描述文案同步去掉 JSON 字样（导入/导出行为不变）。
+- 反馈途径更换：弃用「粘贴文本 → 云函数提交 GitHub Issues」方案（对用户要跳浏览器太麻烦），改用微信自带「意见反馈」按钮（`<button open-type="feedback">`）：用户在微信内直接提交文字+截图，提交内容在 mp.weixin.qq.com 小程序后台「反馈管理」查看。真机可用；开发者工具模拟器内点击可能无响应属正常。me.js 清理 feedbackText/feedbackStatus/submitFeedback/copyFeedback/guideManualSubmit 及 GitHub 链接；`cloudfunctions/feedback` 客户端已不调用，暂保留在仓库与云端（后续确认不再需要可下线）。
+- 修复编辑中误删 me.wxss `.stat` 选择器开头的问题（统计卡样式完整性已验证）。
+- 模拟器实测：账号/数据/反馈三卡渲染正常，按钮文案为 导出/导入/意见反馈，用户编码与状态标签同行显示；`docs/screenshots/me.png` 已更新。
+- me.js 语法校验通过；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 账号卡片紧凑化：正圆头像/去保存按钮/去成功提示）
+
+- 头像椭圆根因：原生 button 的 UA 固定宽度（184px）会盖过页面 class 里的固定宽度（本项目实测规律：UA 宽度 > 单类名 width，两级类名或内联样式才能覆盖）。头像改为 96rpx 并把尺寸写进 WXML 内联样式兜底，模拟器实测 49×49px 正圆贴左。
+- 「保存资料」按钮移除：昵称失焦（bindblur）且有改动时自动调 saveProfile 保存；头像保持选完即上传即存。整行操作按钮区取消，排版收紧为单行：头像 + 昵称/微信号列 + 「退出登录」小按钮（70px 贴右，`.profile-row .logout-btn` 两级类名压过 UA 宽度）。
+- 成功类提示不再显示：登录成功、资料已保存、已退出登录等文案全部去掉（accountMessage 只留错误/上传中提示）；登录、退出后同步刷新面板右上角「已登录/未登录」标签（原先登录后标签停留在「未登录」的问题一并修复）。
+- 模拟器登录实测通过：头像正圆、单行紧凑布局、昵称失焦自动保存云端 profile 成功；`docs/screenshots/me.png` 已更新为登录态截图。
+- me.js 语法校验通过；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 预览问题批量修复：加入菜单弹窗/解析器/反馈直提 GitHub/排版校准）
+
+- 菜单计划：「回到今天」并入「前一天/后一天」同一行（三按钮等宽 flex，当天时不留空档），去掉对勾图标；搜索下拉选项文字垂直居中、选项框与搜索框等宽（`.picker-item` flex + 内联 `width:100%` 覆盖原生 button UA 固定宽 184px，实测与搜索框同为 366px 对齐）。
+- 加入菜单不弹食材/调味料勾选弹窗（食谱库、菜单计划两处同因）：`ingredient-popup` 组件的 `decorate` helper 必须写在 Component `methods` 内，顶层函数不挂 this 导致 observer 抛错、列表为空；修复后两页均验证弹窗正常出列表，勾选可写入采购清单。
+- 食谱库卡片「添加到菜单」弹层「今天/明天」按钮溢出屏幕：`width:auto; min-width:0` 压缩原生 button 默认宽度，实测弹层 121×45px 在屏内。
+- 新增食谱解析重写（`utils/domain/importParser.js`）：兼容「食材：/调味料：/做法：」标签格式与纯文本粘贴（无标签按空行/【n】分块，首行标题、步骤行入做法、其余入食材）；按名称自动区分食材/调味料（调味料名单移植自 build-recipes-json 脚本，先去量词后缀再比对）；「番茄 2个」等名称+用量自动拆分；保存时保留解析出的用量。**移除微信 OCR 图片识别功能**（按钮/ocrFromImage/extractOcrText 全删，不再依赖 ocr-plugin）。
+- 编辑食谱页：「添加食材/添加调味料」按钮不再居中——`.section-head .btn` 等显式 `margin:0; width:auto; min-width:0`，实测收缩为 64px 紧凑按钮贴内容区右边缘，与「分类」列对齐；新增食谱页 `.field-head .btn` 同步。
+- 我的页：移除「创建备份」按钮及其 createBackup 逻辑；「反馈」改走新增 `feedback` 云函数直接提交 GitHub Issues（服务端 `https` POST + `GITHUB_TOKEN` 环境变量，已部署至 cloud1-d5gx91rnaaa9f0be4；无 token/失败时降级为复制反馈文本并引导手动到仓库 issues 页）；提示文案移入「反馈」卡片内部（新增独立 `feedbackStatus`，修复提示串到「数据」卡片下方的问题）。
+- 登录页排版：头像按钮显式重置原生 button 样式（`margin:0; width/height:120rpx; border-radius:50%; overflow:hidden`）修复椭圆变形，头像与昵称整体靠左。
+- 更新 `docs/screenshots/`（plan/recipes/shopping/me 四页最终截图）；JS 语法校验通过；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 真机调试兼容修复：替换 ES2020 `??` 语法）
+
+- 真机调试报 `invalid file: utils/domain/importParser.js SyntaxError: Unexpected token ?`：真机 JS 引擎不支持 ES2020 空值合并 `??`。替换 5 个文件共 8 处：`importParser.js`（食材行索引）、`mealPlan.js`、`storage.js`（×2）、`shopping.js`、`recipes.js`（×3）。
+- 其中 `importParser` 行索引与 `storage` 旧 slotId 排序的合法值含 `0`，不能换 `||`，改用显式 `undefined` 判断保留 0 值语义；其余按现有 `||` 习惯替换。
+- 顺带替换 2 处 ES2019 语法防旧引擎：`storage.js` `catch {}` → `catch (e) {}`；`importParser.js` `.flatMap()` → `.reduce((all, line) => all.concat(...), [])`。
+- 全量 JS `node --check` 通过，无 `??`/`?.` 残留；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 发布：代码上传 + 云函数部署）
+
+- 代码上传：`wechatwebdevtools cli upload` 将当前工作区（含本次 UI 修复）上传为开发版本 **1.0.0**（包体 129.7 KB，AppID wx603e02387ba0a6e0），可在公众平台「版本管理 → 开发版本」查看。
+- 云函数：`login` / `saveProfile` 首次部署至云环境 `cloud1-d5gx91rnaaa9f0be4`（远程安装依赖；首次创建处 Creating 状态会报 UpdateFunctionCode 失败，等待约 1–2 分钟重试即成功）。users 集合由云函数 createCollection 兜底自动创建。
+- 剩余人工步骤（需管理员登录 mp.weixin.qq.com）：开发版本设为体验版（可选）→ 提交审核 → 审核通过后发布；建议先在后台完善「用户隐私保护指引」（涉及头像/昵称信息）。
+
+## 2026-09-06（Mini-V1 · 预览修正：日期区重排/清单按钮溢出/隐藏原生标题）
+
+- 菜单计划：清除开发工具中误加的内联 `position: relative; left/top` 定位（「前一天/日期/后一天」互相错位重叠，空状态与搜索框被推偏）；重排为「日期居中一行在上，『前一天/后一天』等宽横排一行在下」（`.day-controls` 纵向 + `.day-nav` flex:1）。
+- 采购清单：手动添加/批量删除/复制清单三按钮移出页头行，独占一行等宽平铺（gap 12rpx、margin-bottom 20rpx），修复按钮溢出屏幕。
+- 原生导航栏标题文字全部置空（app.json window + plan/recipes/shopping/me/import 页面级 `navigationBarTitleText: ""`），顶部固定区不再显示文字；页内「图标 + 标题」页头保留。
+- JSON 语法校验通过；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 按参考图调整按钮与文字配色排版）
+
+- 页头改版：图标底由杏黄改为白色圆角块（细边框 + 轻阴影），标题统一深绿 `--brand #254139` 粗体；板块标题（section-title/panel-title）同步深绿。
+- 采购清单对齐参考图：顶栏三按钮改「白底＋前置图标」——手动添加（plus 深绿）、批量删除（trash 红 `#a43e35`）、复制清单（唯一深绿实心主按钮 + 新生成的白色 copy 图标）；清单项排版改为「名称深绿粗体 + 数量灰色同行，来源（sourceLabel）灰色小字第二行」，已勾选删除线灰色。
+- 新增 lucide 同源风格图标 `copy.png` / `copy-white.png`（Pillow 绘制 96px、8px 圆头描边）；全局按钮文字加粗 600。
+- 菜单计划/食谱库卡片标题同步深绿 700 字重。
+- 语法校验通过；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 导航改版 + visual-spec-v2 UI 重设）
+
+- 导航：取消「导入中心」tabBar 项（删 import tab 图标），tab 精简为 菜单计划/食谱库/采购清单/我的；「新增食谱」改为食谱库页头右上主按钮，进入导入页（原导入中心页面，支持粘贴文本 + OCR 图片识别），保存后 navigateBack；取消手写空白新建——recipe-edit 仅用于编辑已有食谱，无 id 访问时自动 redirectTo 导入页，并移除 createBlankRecipe 依赖。
+- 视觉（docs/visual-spec-v2.md）：--muted #5c6d63、新增 --muted-3 #6d7d72 与 --accent-warm #f2b35c（替换 --yellow，「我的」页同步替换）；新增阴影阶梯 --shadow-sm/md/lg，卡片（feed-card/plan-card/shop-item/draft-card/.card）加 shadow-sm、modal 改用 shadow-lg；主按钮 80rpx / 小按钮 72rpx，统一 `:active scale(.97)` + 120ms 缓出按压反馈；标题与按钮 nowrap，杜绝窄屏文字竖向折行。
+- 页头：顶部导航栏固定「计划有范」（app.json，移除页面级 navigationBarTitleText）；各 tab 页与新增食谱页加统一页头——杏黄 #f2b35c 圆角图标底（calendar-plus/soup-brand/list-plus/user/upload）+ 加粗标题横排；菜单计划页头右侧收纳「分享菜单」按钮。
+- JS/JSON 语法校验全部通过；未改部署配置。
+
+## 2026-09-06（Mini-V1 · 需求图功能补齐：拖动排序/分享菜单/OCR/清单编辑）
+
+- 菜单计划：卡片长按拖动排序（快照槽位 + 位移映射，拖动中其他卡片让位、松手落位并持久化，替代原「上移/下移」按钮）；新增「分享菜单」按钮，Canvas 2D 生成品牌风格分享图（头部绿块 + 菜品卡片列表 + 落款），支持保存到相册 / 发给朋友（`wx.saveImageToPhotosAlbum` / `wx.shareImageMessage`）。
+- 导入中心：新增「图片识别文字」入口（`wx.chooseMedia` + ocr-plugin 插件 `useAllOcr`），识别结果追加填入文本框再解析；插件未开通时弹窗给出后台开通指引（需在小程序后台添加 ocr-plugin 插件并在 app.json 声明）。
+- 采购清单：每项右侧新增编辑入口，弹窗可改名称/数量/单位/分类并支持单项删除（确认弹窗）。
+- 均通过 node --check / JSON 语法校验；未改动部署配置。
+
 ## 2026-09-06（Mini-V1 · 代码审查修复）
 
 - 云函数：`login`/`saveProfile` 改为以 openid 作 `_id` 的幂等 upsert（消除并发首登重复用户 + 统一 schema）；加 try/catch + `createCollection` 兜底 + 结构化 `{ok,code,message}` 返回；`saveProfile` 服务端清洗资料（昵称限长 32、头像仅接受 `cloud://`/`https`/空）。

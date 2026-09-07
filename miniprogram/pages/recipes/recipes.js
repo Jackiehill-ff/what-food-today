@@ -105,8 +105,9 @@ Page({
     this.setData({ menuPickerId: this.data.menuPickerId === id ? "" : id });
   },
 
-  startNew() {
-    wx.navigateTo({ url: "/pages/recipe-edit/recipe-edit" });
+  // 新增食谱统一走导入流程（粘贴文本 / 图片识别），不再提供手写空白表单
+  goImport() {
+    wx.navigateTo({ url: "/pages/import/import" });
   },
 
   editRecipe(e) {

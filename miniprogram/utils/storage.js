@@ -16,7 +16,7 @@ const migrateImportRecord = (record = {}) => ({
 });
 
 const migrateShoppingItem = (item = {}) => ({
-  id: item.id ?? createId(),
+  id: item.id || createId(),
   date: typeof item.date === "string" ? item.date : "",
   name: typeof item.name === "string" ? item.name : "",
   amount: typeof item.amount === "string" ? item.amount : "",
@@ -40,10 +40,12 @@ const migrateMealPlan = (mealPlan) => {
   return mealPlan
     .map((entry, index) => {
       const item = entry || {};
+      // 真机 JS 引擎不支持 ?? 语法；slotOrder 合法值含 0（早餐），不能用 ||
+      const slotOrder = LEGACY_SLOT_ORDER[item.slotId];
       return {
         date: typeof item.date === "string" ? item.date : "",
         recipeId: typeof item.recipeId === "string" ? item.recipeId : "",
-        slotOrder: item.slotId !== undefined ? (LEGACY_SLOT_ORDER[item.slotId] ?? 99) : 99,
+        slotOrder: slotOrder === undefined ? 99 : slotOrder,
         index,
       };
     })
@@ -120,7 +122,7 @@ const loadSyncMetadata = () => {
   try {
     const stored = wx.getStorageSync(SYNC_STORAGE_KEY);
     return normalizeSyncMetadata(stored ? (typeof stored === "string" ? JSON.parse(stored) : stored) : DEFAULT_SYNC_METADATA);
-  } catch {
+  } catch (e) {
     return normalizeSyncMetadata(DEFAULT_SYNC_METADATA);
   }
 };

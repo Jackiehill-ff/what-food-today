@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "菜单计划",
+  "navigationBarTitleText": "",
   "enablePullDownRefresh": false,
   "usingComponents": {
     "ingredient-popup": "/components/ingredient-popup/ingredient-popup"

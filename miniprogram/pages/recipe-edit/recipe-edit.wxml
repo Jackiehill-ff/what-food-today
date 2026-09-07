@@ -6,8 +6,8 @@
       <image wx:else class="thumb-icon" src="/images/icons/soup-placeholder.png" />
     </view>
     <view class="image-actions">
-      <button class="btn btn-ghost btn-sm" bindtap="chooseImage">{{draft.image ? '换一张' : '上传成品图'}}</button>
-      <button class="btn btn-ghost btn-sm danger" wx:if="{{draft.image}}" bindtap="removeImage">移除图片</button>
+      <button wx:if="{{!draft.image}}" class="btn btn-ghost btn-sm" bindtap="chooseImage">上传成品图</button>
+      <button wx:else class="btn btn-ghost btn-sm danger" bindtap="removeImage">移除图片</button>
     </view>
   </view>
 

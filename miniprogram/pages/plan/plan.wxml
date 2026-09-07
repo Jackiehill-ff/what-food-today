@@ -1,14 +1,24 @@
 <view class="page">
-  <view class="day-controls">
-    <button class="btn btn-ghost btn-sm" bindtap="prevDay">前一天</button>
-    <view class="day-header">{{dayHeader}}</view>
-    <button class="btn btn-ghost btn-sm" bindtap="nextDay">后一天</button>
+  <view class="page-header">
+    <view class="page-icon">
+      <image class="ic" src="/images/tabbar/plan-selected.png" />
+    </view>
+    <text class="page-title">菜单计划</text>
+    <view class="page-header-side">
+      <button class="btn btn-ghost btn-sm" bindtap="shareMenu">
+        <image class="ic ic-14" src="/images/icons/download.png" />分享菜单
+      </button>
+    </view>
   </view>
 
-  <button class="btn btn-ghost btn-sm today-btn" wx:if="{{!isToday}}" bindtap="goToday">
-    <image class="ic ic-14" src="/images/icons/check.png" />
-    回到今天
-  </button>
+  <view class="day-controls">
+    <view class="day-header">{{dayHeader}}</view>
+    <view class="day-nav">
+      <button class="btn btn-ghost btn-sm" bindtap="prevDay">前一天</button>
+      <button wx:if="{{!isToday}}" class="btn btn-ghost btn-sm" bindtap="goToday">回到今天</button>
+      <button class="btn btn-ghost btn-sm" bindtap="nextDay">后一天</button>
+    </view>
+  </view>
 
   <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
 
@@ -18,7 +28,19 @@
       <text class="empty-text">在下方搜索食谱，选择后会弹出食材勾选，可直接加入采购清单。</text>
     </view>
 
-    <view class="plan-card" wx:for="{{planned}}" wx:key="id" wx:for-item="recipe">
+    <view
+      class="plan-card {{dragIndex == index ? 'dragging' : ''}}"
+      wx:for="{{planned}}"
+      wx:key="id"
+      wx:for-item="recipe"
+      wx:for-index="index"
+      data-index="{{index}}"
+      bindlongpress="onCardLongPress"
+      catchtouchmove="{{dragIndex >= 0 ? 'onCardTouchMove' : ''}}"
+      bindtouchend="onCardTouchEnd"
+      bindtouchcancel="onCardTouchEnd"
+      style="{{dragIndex >= 0 ? (dragIndex == index ? 'transform: translateY(' + dragOffset + 'px);' : (dragShifts[index] ? 'transform: translateY(' + dragShifts[index] + 'px);' : '')) : ''}}"
+    >
       <view class="thumb plan-thumb {{recipe.image ? '' : 'thumb-placeholder'}}">
         <image wx:if="{{recipe.image}}" class="thumb-img" src="{{recipe.image}}" mode="aspectFill" />
         <image wx:else class="thumb-icon sm" src="/images/icons/soup-placeholder.png" />
@@ -35,14 +57,6 @@
         <view class="method-block">
           <view class="method-title">做法</view>
           <text class="{{recipe.method ? '' : 'muted'}}">{{recipe.method || '暂无做法'}}</text>
-        </view>
-        <view class="menu-row">
-          <button class="btn btn-ghost btn-sm menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="-1">
-            <image class="ic ic-14" src="/images/icons/arrow-up.png" />上移
-          </button>
-          <button class="btn btn-ghost btn-sm menu-small" bindtap="moveRecipe" data-id="{{recipe.id}}" data-dir="1">
-            <image class="ic ic-14" src="/images/icons/arrow-down.png" />下移
-          </button>
         </view>
         <view class="menu-row">
           <picker class="menu-date" mode="date" value="{{planDate}}" bindchange="onMenuChangeDate" data-id="{{recipe.id}}">
@@ -73,6 +87,7 @@
       </view>
       <button
         class="picker-item"
+        style="width:100%;margin:0;"
         wx:for="{{searchResults}}"
         wx:key="id"
         wx:for-item="item"
@@ -86,4 +101,42 @@
 
   <!-- 食材勾选弹窗 -->
   <ingredient-popup visible="{{popupVisible}}" recipe="{{popupRecipe}}" bind:close="onPopupClose" bind:add="onPopupAdd" />
+
+  <!-- 分享菜单：先勾选食谱，再在可见画布上生成预览（离屏画布真机导出会失败） -->
+  <view class="modal-mask" wx:if="{{shareStep}}" catchtouchmove="noop">
+    <view class="modal share-modal" wx:if="{{shareStep == 'select'}}">
+      <view class="modal-header">
+        <view>
+          <view class="modal-title">选择要分享的菜</view>
+          <view class="modal-subtitle">今天共 {{planned.length}} 道，已选 {{sharePickCount}} 道</view>
+        </view>
+      </view>
+      <view class="modal-body share-pick-list">
+        <view class="share-pick-row" wx:for="{{shareItems}}" wx:key="id" data-index="{{index}}" bindtap="toggleSharePick">
+          <view class="checkbox {{item.checked ? 'checked' : ''}}">
+            <image wx:if="{{item.checked}}" class="ic" src="/images/icons/check-white.png" />
+          </view>
+          <text class="share-pick-name">{{item.title}}</text>
+        </view>
+      </view>
+      <view class="modal-footer share-actions">
+        <button class="btn btn-ghost" bindtap="closeShare">取消</button>
+        <button class="btn btn-primary" bindtap="generateShare" disabled="{{!sharePickCount}}">生成分享图</button>
+      </view>
+    </view>
+
+    <view class="modal share-modal" wx:else>
+      <view class="modal-header">
+        <view class="modal-title">分享图预览</view>
+      </view>
+      <view class="modal-body share-preview-body">
+        <canvas id="share-canvas" type="2d" class="share-canvas" style="height:{{shareCanvasH}}rpx;"></canvas>
+      </view>
+      <view class="modal-footer share-actions">
+        <button class="btn btn-ghost" bindtap="closeShare">关闭</button>
+        <button class="btn btn-ghost" bindtap="saveShareImage">保存到相册</button>
+        <button class="btn btn-primary" bindtap="sendShareImage">发给朋友</button>
+      </view>
+    </view>
+  </view>
 </view>

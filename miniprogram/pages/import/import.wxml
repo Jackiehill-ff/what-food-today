@@ -1,6 +1,13 @@
 <view class="page">
+  <view class="page-header">
+    <view class="page-icon">
+      <image class="ic" src="/images/icons/upload.png" />
+    </view>
+    <text class="page-title">新增食谱</text>
+  </view>
+
   <view class="hint">
-    粘贴 flomo 或其他来源的食谱文本，按「食材：/调味料：/做法：」分段，可一次解析多个食谱。
+    粘贴食谱文本后点「解析」：支持「食材：/调味料：/做法：」分段格式，也支持一行一个食材的纯文本（自动区分食材与调味料），可一次解析多个食谱。
   </view>
 
   <textarea

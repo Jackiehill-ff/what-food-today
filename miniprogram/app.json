@@ -9,7 +9,7 @@
   ],
   "window": {
     "navigationBarBackgroundColor": "#f6f2ec",
-    "navigationBarTitleText": "今天吃啥？",
+    "navigationBarTitleText": "",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f6f2ec",
     "backgroundTextStyle": "dark"
@@ -25,12 +25,6 @@
         "text": "菜单计划",
         "iconPath": "images/tabbar/plan-normal.png",
         "selectedIconPath": "images/tabbar/plan-selected.png"
-      },
-      {
-        "pagePath": "pages/import/import",
-        "text": "导入中心",
-        "iconPath": "images/tabbar/import-normal.png",
-        "selectedIconPath": "images/tabbar/import-selected.png"
       },
       {
         "pagePath": "pages/recipes/recipes",

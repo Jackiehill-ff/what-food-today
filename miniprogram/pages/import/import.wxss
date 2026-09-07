@@ -27,6 +27,7 @@
   border: 1px solid var(--border);
   border-radius: 16rpx;
   background: var(--card);
+  box-shadow: var(--shadow-sm);
 }
 
 .draft-head {
@@ -63,6 +64,12 @@
   justify-content: space-between;
 }
 
+.field-head .btn {
+  margin: 0;
+  width: auto;
+  min-width: 0;
+}
+
 .field-label {
   font-size: 26rpx;
   color: var(--label);
@@ -81,4 +88,18 @@
 
 .save-btn {
   margin-top: 32rpx;
+}
+
+.import-actions {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.import-actions .btn-primary {
+  flex: 1;
+}
+
+.import-actions .btn-ghost {
+  white-space: nowrap;
 }

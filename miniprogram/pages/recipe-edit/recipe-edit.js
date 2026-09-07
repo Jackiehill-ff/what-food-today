@@ -1,6 +1,6 @@
 const app = getApp();
 const { createId, createTimestamp } = require("../../utils/domain/ids");
-const { createBlankItem, createBlankRecipe } = require("../../utils/domain/recipes");
+const { createBlankItem } = require("../../utils/domain/recipes");
 const { isDataUrl, deleteImageFile } = require("../../utils/images");
 
 const UNIT_VALUES = ["", "g", "tsp"];
@@ -40,8 +40,8 @@ Page({
         return;
       }
     }
-    this.setData({ draft: createBlankRecipe(), editingId: "" });
-    this.refreshSections();
+    // 新增食谱统一走导入流程（粘贴文本 / 图片识别），本页仅用于编辑已有食谱
+    wx.redirectTo({ url: "/pages/import/import" });
   },
 
   refreshSections() {
@@ -140,7 +140,20 @@ Page({
   addItem(e) {
     const category = e.currentTarget.dataset.category || "食材";
     const draft = this.data.draft;
-    const ingredients = [...draft.ingredients, createBlankItem(category)];
+    const ingredients = [...draft.ingredients];
+    const blank = createBlankItem(category);
+    // 新行插到该类别最上面（而不是追加到列表末尾）
+    const firstIndex = ingredients.findIndex((item) => item.category === category);
+    if (firstIndex === -1) {
+      // 该类别还没有条目：食材放整表最前，调味料排在食材之后
+      if (category === "食材") {
+        ingredients.unshift(blank);
+      } else {
+        ingredients.push(blank);
+      }
+    } else {
+      ingredients.splice(firstIndex, 0, blank);
+    }
     this.setData({ "draft.ingredients": ingredients });
     this.refreshSections();
   },

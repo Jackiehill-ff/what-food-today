@@ -25,3 +25,6 @@ scripts/recipe-images/cache/
 
 # 微信开发者工具生成的私有配置
 project.private.config.json
+
+# 微信开发者工具在子目录重建的冗余配置（权威配置为根目录 project.config.json）
+miniprogram/project.config.json

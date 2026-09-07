@@ -1,5 +1,5 @@
 const app = getApp();
-const { migrateAppState, createAppStateBackup } = require("../../utils/storage");
+const { migrateAppState } = require("../../utils/storage");
 const { isDataUrl, readImageAsDataUrlAsync } = require("../../utils/images");
 const { getTodayKey } = require("../../utils/domain/mealPlan");
 const { login, saveProfile } = require("../../utils/cloud");
@@ -18,7 +18,6 @@ Page({
     accountMessage: "",
     dataStatus: "",
     stats: { recipes: 0, planned: 0, shopping: 0 },
-    feedbackText: "",
   },
 
   onShow() {
@@ -71,7 +70,8 @@ Page({
         const user = { openid: result.openid, profile: result.profile || { nickname: "", avatarUrl: "" } };
         app.setUser(user);
         this.applyUser(user);
-        this.setData({ busy: false, accountMessage: "登录成功" });
+        // 成功状态不额外显示文字，页面直接切换为已登录布局
+        this.setData({ busy: false, accountMessage: "", syncTagText: "已登录" });
       })
       .catch((error) => {
         console.error("登录失败", error);
@@ -85,11 +85,25 @@ Page({
   logout() {
     app.clearUser();
     this.applyUser(null);
-    this.setData({ accountMessage: "已退出登录，本地数据仍保留" });
+    this.setData({ accountMessage: "", syncTagText: this.data.isCloudEnabled ? "未登录" : "本地模式" });
   },
 
   onNicknameInput(e) {
     this.setData({ nickname: e.detail.value });
+  },
+
+  // 「保存资料」按钮已移除：昵称失焦且有改动时自动保存
+  onNicknameBlur() {
+    const user = app.globalData.user;
+    if (!user) {
+      return;
+    }
+    const next = this.data.nickname.trim();
+    const prev = (user.profile && user.profile.nickname) || "";
+    if (next === prev) {
+      return;
+    }
+    this.persistProfile();
   },
 
   onChooseAvatar(e) {
@@ -131,21 +145,12 @@ Page({
         const next = { ...user, profile: result.profile || profile };
         app.setUser(next);
         this.applyUser(next);
-        this.setData({ accountMessage: "资料已保存" });
+        this.setData({ accountMessage: "" });
       })
       .catch((error) => {
         console.error("资料保存失败", error);
         this.setData({ accountMessage: "资料保存失败" });
       });
-  },
-
-  saveProfileTap() {
-    this.persistProfile();
-  },
-
-  createBackup() {
-    const key = createAppStateBackup();
-    this.setData({ dataStatus: key ? "已创建本地备份" : "暂无本地数据可备份" });
   },
 
   exportData() {
@@ -238,24 +243,4 @@ Page({
     });
   },
 
-  onFeedbackInput(e) {
-    this.setData({ feedbackText: e.detail.value });
-  },
-
-  copyFeedback() {
-    const text = this.data.feedbackText.trim();
-    if (!text) {
-      return;
-    }
-    wx.setClipboardData({ data: text, success: () => this.setData({ dataStatus: "反馈内容已复制" }) });
-  },
-
-  openGitHubIssue() {
-    const title = "小程序反馈";
-    const body = this.data.feedbackText.trim() || "（请在此描述你的建议或遇到的问题）";
-    const url = `https://github.com/Jackiehill-ff/What-food-today/issues/new?title=${encodeURIComponent(
-      title,
-    )}&body=${encodeURIComponent(body)}`;
-    wx.setClipboardData({ data: url, success: () => this.setData({ dataStatus: "已复制反馈链接，请到浏览器粘贴提交" }) });
-  },
 });

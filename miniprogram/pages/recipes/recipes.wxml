@@ -1,9 +1,14 @@
 <view class="page">
-  <view class="section-header">
-    <text class="section-title">食谱库</text>
-    <button class="btn btn-primary btn-sm" bindtap="startNew">
-      <image class="ic ic-14" src="/images/icons/plus-white.png" />新增食谱
-    </button>
+  <view class="page-header">
+    <view class="page-icon">
+      <image class="ic" src="/images/tabbar/recipes-selected.png" />
+    </view>
+    <text class="page-title">食谱库</text>
+    <view class="page-header-side">
+      <button class="btn btn-primary btn-sm" bindtap="goImport">
+        <image class="ic ic-14" src="/images/icons/plus-white.png" />新增食谱
+      </button>
+    </view>
   </view>
 
   <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
@@ -38,7 +43,7 @@
   <view class="feed">
     <view class="empty" wx:if="{{filtered.length == 0}}">
       <text class="empty-title">还没有食谱</text>
-      <text class="empty-text">点右上角「新增食谱」创建一道常做菜，或到导入中心导入。</text>
+      <text class="empty-text">点右上角「新增食谱」，粘贴食谱文本或拍图识别，即可导入。</text>
     </view>
 
     <view class="feed-card" wx:for="{{filtered}}" wx:key="id" wx:for-item="recipe">

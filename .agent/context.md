@@ -2,9 +2,25 @@
 
 ## 项目概况
 
-`今天吃啥？` 是一个个人食谱计划和采购清单应用。当前仓库是 Vite + React + TypeScript 前端应用，部署到 GitHub Pages。
+`今天吃啥？` 是一个个人食谱计划和采购清单应用。仓库同时承载两个应用：
 
-当前阶段准备进入账号 + 云同步开发。在此之前，后续 agent 必须先理解现有本地数据、迁移规则和产品流程，避免云同步开发覆盖或丢失已有用户数据。
+- `main` 分支：Vite + React + TypeScript 前端应用（`src/`），部署到 GitHub Pages，另封装了安卓 APK（Capacitor）。下文「技术栈/关键文件/当前功能/数据模型」等章节均描述此应用。
+- `Mini-V1` 分支（当前工作分支）：`miniprogram/` 原生微信小程序（AppID `wx603e02387ba0a6e0`）+ `cloudfunctions/` 微信云函数，复刻 APP 版功能并接入微信一键登录。
+
+后续 agent 必须先理解现有本地数据、迁移规则和产品流程，避免云同步开发覆盖或丢失已有用户数据。
+
+## Mini-V1 小程序（当前分支）
+
+- 结构：4 个 tab 页（`pages/plan|recipes|shopping|me`）+ `pages/recipe-edit`（编辑已有食谱）+ `pages/import`（新增食谱：粘贴文本解析）；共享组件 `components/ingredient-popup`（加入菜单时的食材勾选弹窗）。
+- 领域层：`utils/domain/`（recipes/mealPlan/shopping/importParser）复刻 `src/domain/` 逻辑；`utils/storage.js` 沿用 `meal-planner-app-v1` 数据键与迁移；成品图写本地文件（`utils/images.js`，storage 单 key 上限约 1MB，只存路径）。
+- 登录：云函数 `login`/`saveProfile`（云开发环境 cloud1-d5gx91rnaaa9f0be4，环境 ID 在 `utils/config.js` 的 `CLOUD_ENV`）；未开通云开发自动降级本地模式。`cloudfunctions/feedback` 已部署但客户端不再调用（反馈入口已取消，待定下线）。
+- 真机约束：JS 引擎不支持 ES2020+ 语法（`??`/`?.`、`flatMap`、`catch {}`），页面代码用显式 undefined 判断 / `reduce` / `catch (e)`。
+- WXSS 实测规律：原生 `button` 的 UA 固定宽 184px 会盖过单类名 `width`，覆盖需两级类名（如 `.profile-row .logout-btn`）或 WXML 内联样式。
+- 分享菜单：canvas type="2d" 必须放在可见弹窗内（离屏挂载真机不渲染、导出失败）；导出后用 `wx.showShareImageMenu`（`wx.shareImageMessage` 不存在）。
+- 排序：菜单计划与采购清单均长按拖动；采购项可选 `order` 字段持久化手动顺序（从未拖过保持「分类 → 添加时间」，新项 `max+1` 接尾）。
+- 品牌：「计划有饭」（米饭的饭）；原生导航栏标题为空，各页自绘「图标 + 标题」页头。
+- 联调：开发者工具 CLI `cli auto --project <仓库根> --auto-port 9420` + miniprogram-automator；`switchTab` 会抛错、统一用 `reLaunch`；DevTools 重启会清模拟器 storage。
+- 发布状态：开发版本 1.0.0（2026-09-06 上传）不含此后修复，真机验证前需重新上传。
 
 ## 技术栈和命令
 

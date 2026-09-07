@@ -20,13 +20,14 @@ Component({
     },
   },
 
-  decorate(items) {
-    const selectedCount = items.filter((item) => item.checked).length;
-    const allChecked = items.length > 0 && items.every((item) => item.checked);
-    return { items, selectedCount, allChecked };
-  },
-
   methods: {
+    // 注意：必须放在 methods 内，否则组件实例上拿不到、观察器会抛错导致食材列表为空
+    decorate(items) {
+      const selectedCount = items.filter((item) => item.checked).length;
+      const allChecked = items.length > 0 && items.every((item) => item.checked);
+      return { items, selectedCount, allChecked };
+    },
+
     noop() {},
 
     onClose() {

@@ -44,7 +44,8 @@ Page({
     const draftId = e.currentTarget.dataset.draftId;
     this.setData({
       drafts: this.data.drafts.map((draft) =>
-        draft.id === draftId ? { ...draft, ingredients: [...draft.ingredients, createBlankItem("食材")] } : draft,
+        // 新行插到类别最上面，而不是追加到列表末尾
+        draft.id === draftId ? { ...draft, ingredients: [createBlankItem("食材"), ...draft.ingredients] } : draft,
       ),
     });
   },
@@ -71,7 +72,13 @@ Page({
         type: "full",
         category: "",
         ingredients: draft.ingredients
-          .map((item) => ({ ...item, name: item.name.trim(), amount: "", unit: "", category: item.category || "食材" }))
+          .map((item) => ({
+            ...item,
+            name: item.name.trim(),
+            amount: (item.amount || "").trim(),
+            unit: (item.unit || "").trim(),
+            category: item.category || "食材",
+          }))
           .filter((item) => item.name),
         method: draft.method.trim(),
         rawText: draft.rawText.trim(),
@@ -89,6 +96,6 @@ Page({
     app.globalData.appState = { ...state, recipes: [...recipes, ...state.recipes] };
     app.saveState();
     this.setData({ drafts: [], importText: "", importStatus: `已保存 ${recipes.length} 个食谱` });
-    wx.switchTab({ url: "/pages/recipes/recipes" });
+    wx.navigateBack();
   },
 });

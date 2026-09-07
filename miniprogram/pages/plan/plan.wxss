@@ -5,18 +5,81 @@
 
 .day-controls {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 16rpx;
 }
 
-.day-controls .day-header {
-  flex: 1;
+.day-header {
   text-align: center;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--brand);
 }
 
-.today-btn {
-  margin-top: 16rpx;
+.day-nav {
+  display: flex;
+  gap: 16rpx;
+}
+
+.day-nav .btn {
+  flex: 1;
+  margin: 0;
+}
+
+.plan-card {
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.plan-card.dragging {
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 12rpx 32rpx rgba(20, 32, 27, 0.22);
+  opacity: 0.96;
+}
+
+/* ===== 分享菜单弹窗 ===== */
+.share-modal {
+  max-height: 86vh;
+}
+
+/* 弹窗底部按钮：原生 button 默认 184px 宽会挤爆一行，收缩并等分 */
+.share-actions .btn {
+  margin: 0;
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+
+.share-pick-list {
+  max-height: 56vh;
+}
+
+.share-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 22rpx 8rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.share-pick-name {
+  font-size: 30rpx;
+  color: #1d2521;
+}
+
+/* 画布可见地放在预览弹窗里，宽 486rpx，高度按生成图比例由内联样式给出 */
+.share-preview-body {
+  display: flex;
+  justify-content: center;
+}
+
+.share-canvas {
+  display: block;
+  width: 486rpx;
+  border-radius: 16rpx;
+  border: 1px solid var(--border);
+  background: #f6f2ec;
 }
 
 .plan-list {
@@ -36,6 +99,7 @@
   border: 1px solid var(--border);
   border-radius: 16rpx;
   background: var(--card);
+  box-shadow: var(--shadow-sm);
 }
 
 .plan-thumb {
@@ -50,7 +114,8 @@
 
 .plan-title {
   font-size: 32rpx;
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--ghost-ink);
   line-height: 1.4;
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -119,9 +184,13 @@
 }
 
 .picker-item {
+  display: flex;
+  align-items: center;
   width: 100%;
+  box-sizing: border-box;
   min-height: 64rpx;
   padding: 0 24rpx;
+  margin: 0;
   text-align: left;
   background: var(--card);
   border-radius: 16rpx;
@@ -129,4 +198,12 @@
   border: 1px solid var(--border);
   color: var(--ghost-ink);
   overflow-wrap: anywhere;
+}
+
+/* picker-item 与搜索框等宽（2026-09-06 校准） */
+
+/* tabBar 图标字形占画布比例小于「我的」页图标，放大到 52rpx 保持视觉一致 */
+.page-icon .ic {
+  width: 52rpx;
+  height: 52rpx;
 }

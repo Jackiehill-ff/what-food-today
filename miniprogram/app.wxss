@@ -1,15 +1,17 @@
-/* 全局样式与设计变量（对齐原 APP styles.css 的配色与组件规格） */
+/* 全局样式与设计变量（对齐 visual-spec-v2 配色/阴影/动效规范） */
 page {
   --bg: #f6f2ec;
   --text: #1d2521;
-  --muted: #66776d;
+  --muted: #5c6d63;
+  --muted-3: #6d7d72;
   --label: #42534b;
   --brand: #254139;
   --primary: #2f6f57;
   --primary-dark: #275c49;
   --ghost-ink: #2d4d42;
   --danger: #a43e35;
-  --yellow: #f8d46b;
+  --accent-warm: #f2b35c;
+  --accent-warm-text: #203d33;
   --panel: #ffffff;
   --card: #fbfcfa;
   --border: #dfe5dc;
@@ -22,6 +24,10 @@ page {
   --status-bg: #e4eee5;
   --placeholder-icon: #a9b8ae;
   --placeholder-bg: #f3f7f2;
+  /* 阴影阶梯（spec-v2 §1） */
+  --shadow-sm: 0 2rpx 6rpx rgba(20, 32, 27, 0.1);
+  --shadow-md: 0 8rpx 24rpx rgba(20, 32, 27, 0.18);
+  --shadow-lg: 0 16rpx 56rpx rgba(20, 32, 27, 0.28);
 
   background: var(--bg);
   color: var(--text);
@@ -55,17 +61,24 @@ button::after {
   border: none;
 }
 
-/* 通用按钮（对齐 .primary-button / .ghost-button） */
+/* 通用按钮（对齐 .primary-button / .ghost-button；触控目标 ≥44px） */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  min-height: 76rpx;
+  min-height: 80rpx;
   padding: 0 24rpx;
   border-radius: 16rpx;
   font-size: 26rpx;
+  font-weight: 600;
   border: 1px solid transparent;
+  transition: transform 120ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-primary {
@@ -87,12 +100,17 @@ button::after {
   color: var(--danger);
 }
 
+.btn-ghost.danger {
+  color: var(--danger);
+  border-color: #e6d4cf;
+}
+
 .btn-block {
   width: 100%;
 }
 
 .btn-sm {
-  min-height: 68rpx;
+  min-height: 72rpx;
   padding: 0 20rpx;
   font-size: 24rpx;
 }
@@ -171,6 +189,49 @@ button::after {
   border: 1px solid var(--border);
   border-radius: 16rpx;
   padding: 28rpx;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 页面标题头：白底圆角图标 + 深绿粗标题，横向排列不折行 */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.page-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 14rpx;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.page-icon .ic {
+  width: 36rpx;
+  height: 36rpx;
+}
+
+.page-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--brand);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-header-side {
+  margin-left: auto;
+  display: flex;
+  gap: 12rpx;
+  flex-shrink: 0;
 }
 
 /* 标题 */
@@ -185,8 +246,9 @@ button::after {
 .section-title {
   font-size: 40rpx;
   font-weight: 700;
-  color: var(--text);
+  color: var(--brand);
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 /* 弱化文字 */
@@ -342,7 +404,7 @@ button::after {
   border: 1px solid var(--border);
   border-radius: 24rpx;
   background: #ffffff;
-  box-shadow: 0 18rpx 48rpx rgba(20, 32, 27, 0.28);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
 }

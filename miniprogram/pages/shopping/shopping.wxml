@@ -1,11 +1,21 @@
 <view class="page">
-  <view class="section-header">
-    <text class="section-title">采购清单</text>
-    <view class="top-actions">
-      <button class="btn btn-ghost btn-sm" bindtap="openManual">手动添加</button>
-      <button class="btn btn-ghost btn-sm" bindtap="batchDelete">批量删除</button>
-      <button class="btn btn-ghost btn-sm" bindtap="copyList">复制清单</button>
+  <view class="page-header">
+    <view class="page-icon">
+      <image class="ic" src="/images/tabbar/shopping-selected.png" />
     </view>
+    <text class="page-title">采购清单</text>
+  </view>
+
+  <view class="top-actions">
+    <button class="btn btn-ghost btn-sm" bindtap="openManual">
+      <image class="ic ic-14" src="/images/icons/plus.png" />手动添加
+    </button>
+    <button class="btn btn-ghost btn-sm danger" bindtap="batchDelete">
+      <image class="ic ic-14" src="/images/icons/trash.png" />批量删除
+    </button>
+    <button class="btn btn-primary btn-sm" bindtap="copyList">
+      <image class="ic ic-14" src="/images/icons/copy-white.png" />复制清单
+    </button>
   </view>
 
   <view class="status-note" wx:if="{{statusMessage}}">{{statusMessage}}</view>
@@ -17,20 +27,33 @@
 
   <view class="shop-list">
     <view
-      class="shop-item {{item.checked ? 'checked' : ''}}"
+      class="shop-item {{item.checked ? 'checked' : ''}} {{dragIndex == index ? 'dragging' : ''}}"
       wx:for="{{items}}"
       wx:key="id"
       wx:for-item="item"
-      bindtap="toggleItem"
+      wx:for-index="index"
       data-id="{{item.id}}"
+      bindtap="toggleItem"
+      data-index="{{index}}"
+      bindlongpress="onItemLongPress"
+      catchtouchmove="{{dragIndex >= 0 ? 'onItemTouchMove' : ''}}"
+      bindtouchend="onItemTouchEnd"
+      bindtouchcancel="onItemTouchEnd"
+      style="{{dragIndex >= 0 ? (dragIndex == index ? 'transform: translateY(' + dragOffset + 'px);' : (dragShifts[index] ? 'transform: translateY(' + dragShifts[index] + 'px);' : '')) : ''}}"
     >
       <view class="checkbox {{item.checked ? 'checked' : ''}}">
         <image wx:if="{{item.checked}}" class="ic" src="/images/icons/check-white.png" />
       </view>
       <text class="dot">{{item.category}}</text>
       <view class="shop-main">
-        <text class="shop-name {{item.checked ? 'done' : ''}}">{{item.name}}</text>
-        <text class="shop-amount">{{item.amountLabel}}</text>
+        <view class="shop-line">
+          <text class="shop-name {{item.checked ? 'done' : ''}}">{{item.name}}</text>
+          <text class="shop-amount">{{item.amountLabel}}</text>
+        </view>
+        <text class="shop-source" wx:if="{{item.sourceLabel}}">{{item.sourceLabel}}</text>
+      </view>
+      <view class="icon-btn shop-edit" catchtap="openEdit" data-id="{{item.id}}">
+        <image class="ic ic-16" src="/images/icons/edit.png" />
       </view>
     </view>
   </view>
@@ -72,6 +95,50 @@
 
       <view class="modal-footer">
         <button class="btn btn-primary btn-block" bindtap="addManual" disabled="{{!manual.name}}">添加</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 编辑采购项弹窗 -->
+  <view class="modal-mask" wx:if="{{editOpen}}" bindtap="closeEdit">
+    <view class="modal" catchtap="noop">
+      <view class="modal-header">
+        <view class="modal-title">编辑采购项</view>
+        <view class="icon-btn" bindtap="closeEdit">
+          <image class="ic ic-16" src="/images/icons/close.png" />
+        </view>
+      </view>
+
+      <view class="modal-body">
+        <view class="field">
+          <text class="field-label">名称</text>
+          <input class="input" value="{{edit.name}}" data-field="name" bindinput="onEditInput" placeholder="名称" />
+        </view>
+        <view class="field-row">
+          <view class="field">
+            <text class="field-label">数量</text>
+            <input class="input" value="{{edit.amount}}" data-field="amount" bindinput="onEditInput" placeholder="数量" />
+          </view>
+          <view class="field">
+            <text class="field-label">单位</text>
+            <picker range="{{unitLabels}}" bindchange="onEditUnit">
+              <view class="picker-value">{{edit.unit || '无'}}</view>
+            </picker>
+          </view>
+        </view>
+        <view class="field">
+          <text class="field-label">分类</text>
+          <picker range="{{categories}}" bindchange="onEditCategory">
+            <view class="picker-value">{{edit.category}}</view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="modal-footer edit-footer">
+        <button class="btn btn-ghost edit-delete" bindtap="deleteEdit">
+          <image class="ic ic-15" src="/images/icons/trash.png" />删除
+        </button>
+        <button class="btn btn-primary edit-save" bindtap="saveEdit" disabled="{{!edit.name}}">保存</button>
       </view>
     </view>
   </view>

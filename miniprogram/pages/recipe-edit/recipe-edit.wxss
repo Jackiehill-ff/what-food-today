@@ -55,6 +55,14 @@
   margin-bottom: 14rpx;
 }
 
+/* 原生 button 自带 margin:auto 与固定宽度（184px），显式清零并收缩为紧凑尺寸，保证靠右与「分类」列对齐 */
+.section-head .btn,
+.image-actions .btn {
+  margin: 0;
+  width: auto;
+  min-width: 0;
+}
+
 .section-title {
   font-size: 30rpx;
   font-weight: 700;

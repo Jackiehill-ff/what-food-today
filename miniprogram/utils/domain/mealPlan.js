@@ -44,7 +44,7 @@ const reorderMealPlanEntries = (mealPlan, date, orderedRecipeIds) => {
   const order = new Map(orderedRecipeIds.map((recipeId, index) => [recipeId, index]));
   const sorted = positions
     .map((position) => mealPlan[position])
-    .sort((a, b) => (order.get(a.recipeId) ?? 0) - (order.get(b.recipeId) ?? 0));
+    .sort((a, b) => (order.get(a.recipeId) || 0) - (order.get(b.recipeId) || 0));
   const next = [...mealPlan];
   positions.forEach((position, index) => {
     next[position] = sorted[index];

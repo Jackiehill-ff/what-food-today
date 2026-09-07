@@ -53,12 +53,12 @@ const migrateRecipe = (recipe = {}) => {
 
   return {
     id: recipe.id || createId(),
-    title: asTrimmedString(recipe.title ?? recipe.name),
+    title: asTrimmedString(recipe.title || recipe.name),
     type: isRecipeType(recipe.type) ? recipe.type : isRecipeType(recipe.kind) ? recipe.kind : "full",
     category: asTrimmedString(recipe.category),
     ingredients,
-    method: asTrimmedString(recipe.method ?? recipe.steps),
-    rawText: asTrimmedString(recipe.rawText ?? recipe.notes),
+    method: asTrimmedString(recipe.method || recipe.steps),
+    rawText: asTrimmedString(recipe.rawText || recipe.notes),
     image: typeof recipe.image === "string" ? recipe.image : "",
     createdAt: recipe.createdAt || now,
     updatedAt: recipe.updatedAt || now,

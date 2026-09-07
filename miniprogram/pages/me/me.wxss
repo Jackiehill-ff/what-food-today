@@ -21,34 +21,52 @@
 .panel-title {
   font-size: 30rpx;
   font-weight: 700;
-  color: var(--text);
+  color: var(--ghost-ink);
 }
 
 .sync-tag {
   font-size: 22rpx;
   color: #203d33;
-  background: var(--yellow);
+  background: var(--accent-warm);
   padding: 4rpx 16rpx;
   border-radius: 16rpx;
+}
+
+/* 面板头右侧：状态标签 + 用户编码同行 */
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.openid-inline {
+  font-size: 22rpx;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-row {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
+/* 原生 button 的 UA 固定宽度会盖过 class 样式，尺寸同时写进 WXML 内联样式兜底（正圆） */
 .avatar-btn {
   flex-shrink: 0;
-  width: 120rpx;
-  height: 120rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
   overflow: hidden;
+  line-height: 1;
 }
 
 .avatar {
-  width: 120rpx;
-  height: 120rpx;
+  width: 96rpx;
+  height: 96rpx;
   border-radius: 50%;
   display: block;
 }
@@ -57,7 +75,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--yellow);
+  background: var(--accent-warm);
 }
 
 .avatar-empty .avatar-icon {
@@ -65,19 +83,19 @@
   height: 56rpx;
 }
 
-.profile-main {
+/* 昵称输入框占满头像与退出按钮之间的剩余空间 */
+.nickname-input {
   flex: 1;
   min-width: 0;
-}
-
-.nickname-input {
   font-size: 30rpx;
 }
 
-.openid {
-  margin-top: 8rpx;
-  font-size: 24rpx;
-  color: var(--muted);
+/* 退出登录：紧凑小按钮贴右，不再占整行（两级类名压过原生 button 的 UA 固定宽度 184px） */
+.profile-row .logout-btn {
+  flex-shrink: 0;
+  margin: 0;
+  width: auto;
+  min-width: 0;
 }
 
 .row-actions {
@@ -124,8 +142,4 @@
 .stat-label {
   font-size: 24rpx;
   color: var(--muted);
-}
-
-.feedback-input {
-  min-height: 160rpx;
 }
