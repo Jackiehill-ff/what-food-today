@@ -13,7 +13,6 @@ import {
   Copy,
   Download,
   Edit3,
-  ExternalLink,
   FileInput,
   GripVertical,
   ImagePlus,
@@ -22,8 +21,6 @@ import {
   LogIn,
   LogOut,
   Menu,
-  MessageSquare,
-  MoreVertical,
   Plus,
   Save,
   Search,
@@ -36,12 +33,12 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, DragEvent, FormEvent, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction } from "react";
+import type { Dispatch, FormEvent, PointerEvent as ReactPointerEvent, ReactNode, SetStateAction } from "react";
 
 import { useAuthSession } from "./auth/useAuthSession";
 import { localAppStateRepository, migrateAppState } from "./data/appStateRepository";
 import { createAppStateBackup, loadSyncMetadata, saveSyncMetadata } from "./data/syncStorage";
-import { CATEGORIES, RECIPE_ITEM_DRAG_TYPE, UNIT_LABELS, UNIT_OPTIONS } from "./domain/constants";
+import { CATEGORIES } from "./domain/constants";
 import { createId, createTimestamp } from "./domain/ids";
 import { readImageAsRecipeDataUrl } from "./domain/images";
 import { parseRecipeImportText } from "./domain/importParser";
@@ -290,13 +287,13 @@ function App() {
     setImportDrafts((current) => current.map((draft) => (draft.id === draftId ? { ...draft, [field]: value } : draft)));
   };
 
-  const updateImportIngredient = (draftId: string, itemId: string, name: string) => {
+  const updateImportIngredient = (draftId: string, itemId: string, field: "name" | "amount", value: string) => {
     setImportDrafts((current) =>
       current.map((draft) =>
         draft.id === draftId
           ? {
               ...draft,
-              ingredients: draft.ingredients.map((item) => (item.id === itemId ? { ...item, name } : item)),
+              ingredients: draft.ingredients.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)),
             }
           : draft,
       ),
@@ -333,7 +330,15 @@ function App() {
         type: "full",
         category: "",
         ingredients: draft.ingredients
-          .map((item) => ({ ...item, name: item.name.trim(), amount: "", unit: "", category: item.category || "食材" }))
+          .map(
+            (item) => ({
+              ...item,
+              name: item.name.trim(),
+              amount: item.amount.trim(),
+              unit: item.unit.trim(),
+              category: item.category || "食材",
+            }),
+          )
           .filter((item) => item.name),
         method: draft.method.trim(),
         rawText: draft.rawText.trim(),
@@ -366,10 +371,12 @@ function App() {
     }));
   };
 
-  const addRecipeItem = (section: RecipeSection) => {
+  const addRecipeItem = (section: RecipeSection, itemId?: string) => {
+    const blank = createBlankItem(section === "seasonings" ? "调味料" : "食材");
+    const item = itemId ? { ...blank, id: itemId } : blank;
     setRecipeDraft((current) => ({
       ...current,
-      ingredients: [...current.ingredients, createBlankItem(section === "seasonings" ? "调味料" : "食材")],
+      ingredients: [...current.ingredients, item],
     }));
   };
 
@@ -380,18 +387,6 @@ function App() {
         current.ingredients.filter((item) => (section === "seasonings" ? item.category === "调味料" : item.category !== "调味料")).length === 1
           ? current.ingredients
           : current.ingredients.filter((item) => item.id !== itemId),
-    }));
-  };
-
-  const moveRecipeItem = (source: RecipeSection, target: RecipeSection, itemId: string) => {
-    if (source === target) {
-      return;
-    }
-    setRecipeDraft((current) => ({
-      ...current,
-      ingredients: current.ingredients.map((item) =>
-        item.id === itemId ? { ...item, category: target === "seasonings" ? "调味料" : "食材" } : item,
-      ),
     }));
   };
 
@@ -837,7 +832,6 @@ function App() {
                   updateRecipeItem={updateRecipeItem}
                   addRecipeItem={addRecipeItem}
                   removeRecipeItem={removeRecipeItem}
-                  moveRecipeItem={moveRecipeItem}
                   reorderRecipeItem={reorderRecipeItem}
                 />
               </>
@@ -921,7 +915,7 @@ function App() {
                   <textarea
                     value={importText}
                     onChange={(event) => setImportText(event.target.value)}
-                    placeholder="#03Resource/植物领先/分类食谱/蔬菜&#10;干煸青椒苦瓜&#10;食材：青椒、苦瓜、姜、蒜、盐、酱油、白糖、植物油&#10;做法：锅中不放油..."
+                    placeholder="把你喜欢的食谱复制过来吧～"
                     rows={14}
                   />
                 </label>
@@ -1085,6 +1079,20 @@ function App() {
                   <p>菜单计划和采购清单</p>
                 </div>
               </div>
+              <div className="me-stats">
+                <div>
+                  <strong>{appState.recipes.length}</strong>
+                  <span>食谱</span>
+                </div>
+                <div>
+                  <strong>{plannedCount}</strong>
+                  <span>已安排</span>
+                </div>
+                <div>
+                  <strong>{shoppingCount}</strong>
+                  <span>采购项</span>
+                </div>
+              </div>
               <AccountPanel
                 auth={auth}
                 email={accountEmail}
@@ -1094,7 +1102,6 @@ function App() {
                 createLocalBackup={createLocalBackup}
               />
               <DataPanel dataStatus={dataStatus} onExport={exportData} onImport={importData} />
-              <FeedbackPanel />
             </div>
           </section>
         )}
@@ -1121,10 +1128,6 @@ function NavTabs({ activeTab, onChange }: { activeTab: Tab; onChange: (tab: Tab)
         <CalendarDays size={18} />
         <span>菜单计划</span>
       </button>
-      <button className={activeTab === "import" ? "active" : ""} onClick={() => onChange("import")}>
-        <FileInput size={18} />
-        <span>导入中心</span>
-      </button>
       <button className={activeTab === "recipes" ? "active" : ""} onClick={() => onChange("recipes")}>
         <Utensils size={18} />
         <span>食谱库</span>
@@ -1132,6 +1135,10 @@ function NavTabs({ activeTab, onChange }: { activeTab: Tab; onChange: (tab: Tab)
       <button className={activeTab === "shopping" ? "active" : ""} onClick={() => onChange("shopping")}>
         <ShoppingBasket size={18} />
         <span>采购清单</span>
+      </button>
+      <button className={activeTab === "import" ? "active" : ""} onClick={() => onChange("import")}>
+        <FileInput size={18} />
+        <span>导入中心</span>
       </button>
       <button className={activeTab === "me" ? "active" : ""} onClick={() => onChange("me")}>
         <UserRound size={18} />
@@ -1287,7 +1294,7 @@ function SectionHeader({
 }
 
 // 菜单计划卡片列表：支持按住手柄拖动排序（鼠标 + 触屏），
-// 每张卡片的「更改日期 / 删除」收纳在更多菜单里。
+// 每张卡片的「更改日期 / 删除」收纳在展开菜单里（箭头展开，与食谱库一致）。
 function DayMenuList({
   recipes,
   planDate,
@@ -1418,12 +1425,13 @@ function DayMenuList({
               </p>
             </div>
             <button
-              className="icon-button plan-card-more"
+              className="plan-card-more"
               onClick={() => onToggleMenu(recipe.id)}
-              title="更多操作"
+              title={openMenuRecipeId === recipe.id ? "收起" : "更多操作"}
               aria-label={`更多操作 ${recipe.title}`}
+              aria-expanded={openMenuRecipeId === recipe.id}
             >
-              <MoreVertical size={16} />
+              {openMenuRecipeId === recipe.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
             {openMenuRecipeId === recipe.id && (
               <div className="plan-card-menu">
@@ -1570,10 +1578,6 @@ function RecipeImageEditor({ draft, setDraft }: { draft: Recipe; setDraft: Dispa
         <>
           <img className="recipe-image-preview" src={draft.image} alt={`${draft.title || "食谱"}成品图`} />
           <div className="recipe-image-actions">
-            <button className="ghost-button" onClick={() => fileInputRef.current?.click()} disabled={busy} type="button">
-              <ImageUp size={15} />
-              换一张
-            </button>
             <button
               className="ghost-button danger"
               onClick={() => setDraft((current) => ({ ...current, image: "" }))}
@@ -1616,7 +1620,6 @@ function RecipeForm({
   updateRecipeItem,
   addRecipeItem,
   removeRecipeItem,
-  moveRecipeItem,
   reorderRecipeItem,
 }: {
   draft: Recipe;
@@ -1625,9 +1628,8 @@ function RecipeForm({
   saveRecipe: () => void;
   cancelEdit: () => void;
   updateRecipeItem: (section: RecipeSection, itemId: string, field: keyof Ingredient, value: string) => void;
-  addRecipeItem: (section: RecipeSection) => void;
+  addRecipeItem: (section: RecipeSection, itemId?: string) => void;
   removeRecipeItem: (section: RecipeSection, itemId: string) => void;
-  moveRecipeItem: (source: RecipeSection, target: RecipeSection, itemId: string) => void;
   reorderRecipeItem: (section: RecipeSection, itemId: string, direction: -1 | 1) => void;
 }) {
   return (
@@ -1652,7 +1654,6 @@ function RecipeForm({
         updateRecipeItem={updateRecipeItem}
         addRecipeItem={addRecipeItem}
         removeRecipeItem={removeRecipeItem}
-        moveRecipeItem={moveRecipeItem}
         reorderRecipeItem={reorderRecipeItem}
       />
 
@@ -1663,7 +1664,6 @@ function RecipeForm({
         updateRecipeItem={updateRecipeItem}
         addRecipeItem={addRecipeItem}
         removeRecipeItem={removeRecipeItem}
-        moveRecipeItem={moveRecipeItem}
         reorderRecipeItem={reorderRecipeItem}
       />
 
@@ -1702,6 +1702,8 @@ function RecipeForm({
   );
 }
 
+// 食材/调味料列表：每行只显示「名称 + 用量」摘要和编辑/删除按钮，
+// 点编辑弹出输入框（名称/数量/单位/分类 + 上移/下移）。
 function ItemEditor({
   title,
   items,
@@ -1709,105 +1711,152 @@ function ItemEditor({
   updateRecipeItem,
   addRecipeItem,
   removeRecipeItem,
-  moveRecipeItem,
   reorderRecipeItem,
 }: {
   title: string;
   items: Ingredient[];
   section: RecipeSection;
   updateRecipeItem: (section: RecipeSection, itemId: string, field: keyof Ingredient, value: string) => void;
-  addRecipeItem: (section: RecipeSection) => void;
+  addRecipeItem: (section: RecipeSection, itemId?: string) => void;
   removeRecipeItem: (section: RecipeSection, itemId: string) => void;
-  moveRecipeItem: (source: RecipeSection, target: RecipeSection, itemId: string) => void;
   reorderRecipeItem: (section: RecipeSection, itemId: string, direction: -1 | 1) => void;
 }) {
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const editingItem = editingItemId ? items.find((item) => item.id === editingItemId) : undefined;
+  const editingIndex = editingItem ? items.findIndex((item) => item.id === editingItem.id) : -1;
 
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    setIsDragOver(false);
-    const [source, itemId] = event.dataTransfer.getData(RECIPE_ITEM_DRAG_TYPE).split("|");
-    if ((source === "ingredients" || source === "seasonings") && itemId) {
-      moveRecipeItem(source, section, itemId);
+  // 食材因改分类移出本区时弹窗自动关闭，这里同步清掉残留的编辑状态，
+  // 避免同一项再移回本区时弹窗又自己弹出来。
+  useEffect(() => {
+    if (editingItemId && !items.some((item) => item.id === editingItemId)) {
+      setEditingItemId(null);
     }
+  }, [items, editingItemId]);
+
+  const startAdd = () => {
+    const id = createId();
+    addRecipeItem(section, id);
+    setEditingItemId(id);
   };
 
   return (
-    <div
-      className={`item-editor ${isDragOver ? "drag-over" : ""}`}
-      onDragEnter={() => setIsDragOver(true)}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setIsDragOver(false);
-        }
-      }}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={handleDrop}
-    >
+    <div className="item-editor">
       <div className="subsection-title">
         <h3>{title}</h3>
-        <button className="ghost-button" onClick={() => addRecipeItem(section)}>
+        <button className="ghost-button" onClick={startAdd}>
           <Plus size={15} />
           添加
         </button>
       </div>
-      <div className="item-table">
-        {items.map((item, index) => (
-          <div className="item-row" key={item.id}>
-            <button
-              className="drag-handle"
-              draggable
-              onDragStart={(event) => {
-                event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData(RECIPE_ITEM_DRAG_TYPE, `${section}|${item.id}`);
-              }}
-              title={`拖动到${section === "ingredients" ? "调味料" : "食材"}`}
-              type="button"
-            >
-              <GripVertical size={17} />
+      <div className="item-list">
+        {items.map((item) => (
+          <div className="item-list-row" key={item.id}>
+            <button className="item-summary" onClick={() => setEditingItemId(item.id)} title="编辑">
+              <strong className={item.name.trim() ? "" : "unset"}>{item.name.trim() || "未命名"}</strong>
+              {[item.amount, item.unit].filter(Boolean).join("") && (
+                <span>{[item.amount, item.unit].filter(Boolean).join("")}</span>
+              )}
             </button>
-            <input value={item.name} onChange={(event) => updateRecipeItem(section, item.id, "name", event.target.value)} placeholder="名称" />
-            <input value={item.amount} onChange={(event) => updateRecipeItem(section, item.id, "amount", event.target.value)} placeholder="数量" />
-            <select value={item.unit} onChange={(event) => updateRecipeItem(section, item.id, "unit", event.target.value)}>
-              {UNIT_OPTIONS.map((unit) => (
-                <option key={unit} value={unit}>
-                  {UNIT_LABELS[unit]}
-                </option>
-              ))}
-            </select>
-            <select value={item.category} onChange={(event) => updateRecipeItem(section, item.id, "category", event.target.value)}>
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            <div className="item-reorder" role="group" aria-label="调整顺序">
-              <button
-                className="reorder-button"
-                onClick={() => reorderRecipeItem(section, item.id, -1)}
-                disabled={index === 0}
-                title="上移"
-                type="button"
-              >
-                <ArrowUp size={14} />
-              </button>
-              <button
-                className="reorder-button"
-                onClick={() => reorderRecipeItem(section, item.id, 1)}
-                disabled={index === items.length - 1}
-                title="下移"
-                type="button"
-              >
-                <ArrowDown size={14} />
-              </button>
-            </div>
-            <button className="icon-button item-delete" onClick={() => removeRecipeItem(section, item.id)} title="删除">
+            <button className="icon-button" onClick={() => setEditingItemId(item.id)} title="编辑" aria-label={`编辑 ${item.name || "未命名"}`}>
+              <Edit3 size={15} />
+            </button>
+            <button
+              className="icon-button danger"
+              onClick={() => removeRecipeItem(section, item.id)}
+              title="删除"
+              aria-label={`删除 ${item.name || "未命名"}`}
+            >
               <Trash2 size={15} />
             </button>
           </div>
         ))}
       </div>
+
+      {editingItem && (
+        <div className="modal-overlay" onClick={() => setEditingItemId(null)}>
+          <div className="modal item-edit-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <header className="modal-header">
+              <div>
+                <h3>{editingItem.name.trim() || `编辑${title}`}</h3>
+                <p>修改即时生效</p>
+              </div>
+              <button className="icon-button" onClick={() => setEditingItemId(null)} title="关闭">
+                <X size={16} />
+              </button>
+            </header>
+            <label>
+              名称
+              <input
+                value={editingItem.name}
+                onChange={(event) => updateRecipeItem(section, editingItem.id, "name", event.target.value)}
+                placeholder="例如 番茄"
+              />
+            </label>
+            <div className="item-edit-grid">
+              <label>
+                数量
+                <input
+                  value={editingItem.amount}
+                  onChange={(event) => updateRecipeItem(section, editingItem.id, "amount", event.target.value)}
+                  placeholder="无"
+                />
+              </label>
+              <label>
+                分类
+                <select
+                  value={editingItem.category}
+                  onChange={(event) => updateRecipeItem(section, editingItem.id, "category", event.target.value)}
+                >
+                  {CATEGORIES.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="item-edit-reorder">
+              <button
+                className="ghost-button"
+                onClick={() => reorderRecipeItem(section, editingItem.id, -1)}
+                disabled={editingIndex === 0}
+                title="上移"
+                type="button"
+              >
+                <ArrowUp size={14} />
+                上移
+              </button>
+              <button
+                className="ghost-button"
+                onClick={() => reorderRecipeItem(section, editingItem.id, 1)}
+                disabled={editingIndex === items.length - 1}
+                title="下移"
+                type="button"
+              >
+                <ArrowDown size={14} />
+                下移
+              </button>
+              <button
+                className="ghost-button danger"
+                onClick={() => {
+                  removeRecipeItem(section, editingItem.id);
+                  setEditingItemId(null);
+                }}
+                type="button"
+              >
+                <Trash2 size={14} />
+                删除
+              </button>
+            </div>
+            <footer className="modal-footer">
+              <button className="primary-button" onClick={() => setEditingItemId(null)}>
+                <Check size={15} />
+                完成
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1885,7 +1934,7 @@ function ImportPreview({
 }: {
   drafts: ImportDraft[];
   updateDraft: (draftId: string, field: "title" | "method" | "rawText", value: string) => void;
-  updateIngredient: (draftId: string, itemId: string, name: string) => void;
+  updateIngredient: (draftId: string, itemId: string, field: "name" | "amount", value: string) => void;
   addIngredient: (draftId: string) => void;
   removeIngredient: (draftId: string, itemId: string) => void;
 }) {
@@ -1915,7 +1964,17 @@ function ImportPreview({
               <div className="import-ingredient-list">
                 {draft.ingredients.map((item) => (
                   <div className="import-ingredient-row" key={item.id}>
-                    <input value={item.name} onChange={(event) => updateIngredient(draft.id, item.id, event.target.value)} placeholder="名称" />
+                    <input
+                      value={item.name}
+                      onChange={(event) => updateIngredient(draft.id, item.id, "name", event.target.value)}
+                      placeholder="名称"
+                    />
+                    <input
+                      className="import-ingredient-amount"
+                      value={item.amount}
+                      onChange={(event) => updateIngredient(draft.id, item.id, "amount", event.target.value)}
+                      placeholder="数量"
+                    />
                     <button className="icon-button" onClick={() => removeIngredient(draft.id, item.id)} title="删除">
                       <Trash2 size={15} />
                     </button>
@@ -1937,56 +1996,6 @@ function ImportPreview({
         ))
       )}
     </div>
-  );
-}
-
-function FeedbackPanel() {
-  const [feedbackText, setFeedbackText] = useState("");
-  const [copied, setCopied] = useState(false);
-  const feedbackBody = feedbackText.trim();
-
-  const openGitHubIssue = () => {
-    const title = "App 反馈";
-    const body = feedbackBody || "（请在此描述你的建议或遇到的问题）";
-    const url = `https://github.com/Jackiehill-ff/What-food-today/issues/new?title=${encodeURIComponent(
-      title,
-    )}&body=${encodeURIComponent(body)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  const copyFeedback = async () => {
-    if (!feedbackBody) {
-      return;
-    }
-    await navigator.clipboard.writeText(feedbackBody);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  };
-
-  return (
-    <section className="account-panel feedback-panel">
-      <div className="account-heading">
-        <MessageSquare size={17} />
-        <span>反馈</span>
-      </div>
-      <p>写下建议或问题，提交到 GitHub Issues（公开仓库），或复制后自行发送。</p>
-      <textarea
-        value={feedbackText}
-        onChange={(event) => setFeedbackText(event.target.value)}
-        rows={3}
-        placeholder="描述建议或遇到的问题…"
-      />
-      <div className="account-actions">
-        <button className="ghost-button" onClick={openGitHubIssue} disabled={!feedbackBody}>
-          <ExternalLink size={15} />
-          提交到 GitHub
-        </button>
-        <button className="ghost-button" onClick={copyFeedback} disabled={!feedbackBody}>
-          <Copy size={15} />
-          {copied ? "已复制" : "复制"}
-        </button>
-      </div>
-    </section>
   );
 }
 

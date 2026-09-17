@@ -421,7 +421,7 @@ label {
 
 .import-ingredient-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) 38px;
   gap: 8px;
   align-items: center;
 }
@@ -444,18 +444,6 @@ label {
 .item-editor {
   display: grid;
   gap: 10px;
-  padding: 8px;
-  margin: -8px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  transition:
-    border-color 150ms ease,
-    background 150ms ease;
-}
-
-.item-editor.drag-over {
-  border-color: #88a394;
-  background: #f3f8f3;
 }
 
 .subsection-title {
@@ -470,16 +458,88 @@ label {
   font-size: 17px;
 }
 
-.item-table {
+/* 食材/调味料列表：每行「摘要 + 编辑/删除」 */
+.item-list {
   display: grid;
+  gap: 6px;
+}
+
+.item-list-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  border: 1px solid #e7ece4;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.item-list-row .icon-button {
+  width: 34px;
+  min-height: 34px;
+  flex-shrink: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.item-list-row .icon-button:hover {
+  border-color: #d6ddd4;
+  background: #f3f8f3;
+}
+
+.item-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.item-summary strong {
+  font-weight: 650;
+}
+
+.item-summary strong.unset {
+  color: #a9b8ae;
+  font-weight: 500;
+}
+
+.item-summary span {
+  color: #66776d;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+/* 编辑弹窗里的数量/分类 */
+.item-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.item-edit-reorder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
-.item-row {
-  display: grid;
-  grid-template-columns: 28px minmax(110px, 1.4fr) minmax(64px, 0.7fr) minmax(64px, 0.7fr) minmax(88px, 0.8fr) 32px 38px;
-  gap: 8px;
-  align-items: center;
+.item-edit-reorder .ghost-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.item-edit-reorder .ghost-button.danger {
+  margin-left: auto;
 }
 
 .drag-handle {
@@ -496,30 +556,6 @@ label {
 
 .drag-handle:active {
   cursor: grabbing;
-}
-
-.item-reorder {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  justify-content: center;
-}
-
-.reorder-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 17px;
-  padding: 0;
-  border: 1px solid #d6ddd4;
-  border-radius: 6px;
-  color: #2d4d42;
-  background: #ffffff;
-}
-
-.reorder-button:not(:disabled):hover {
-  border-color: #88a394;
 }
 
 .form-actions,
@@ -833,6 +869,31 @@ label {
   background-size: cover, 180px 180px;
 }
 
+/* 我的页统计：与侧栏统计同风格（品牌卡内的半透明白块） */
+.me-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.me-stats div {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.me-stats strong {
+  font-size: 24px;
+}
+
+.me-stats span {
+  color: rgba(248, 251, 248, 0.74);
+  font-size: 13px;
+}
+
 .mobile-topbar {
   display: none;
 }
@@ -908,6 +969,8 @@ label {
 }
 
 .feed-card-text {
+  /* 占满剩余宽度，把展开箭头推到卡片最右侧 */
+  flex: 1;
   min-width: 0;
 }
 
@@ -1011,6 +1074,19 @@ label {
   opacity: 0.6;
   border-style: dashed;
   border-color: #88a394;
+}
+
+/* 展开箭头：无框裸箭头，与食谱库卡片一致 */
+.plan-card-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  color: #819087;
+  background: transparent;
 }
 
 .plan-card-menu {
@@ -1273,38 +1349,8 @@ label {
     grid-template-columns: 1fr;
   }
 
-  .item-row {
-    grid-template-columns: 28px minmax(0, 1fr) 38px;
-  }
-
-  .item-row input,
-  .item-row select {
-    grid-column: 2 / 4;
-  }
-
-  .item-row .drag-handle {
-    grid-column: 1;
-    grid-row: 1 / span 5;
-    height: 100%;
-  }
-
-  .item-row .item-reorder {
-    grid-column: 2;
-    grid-row: 5;
-    flex-direction: row;
-    gap: 8px;
-  }
-
-  .item-row .reorder-button {
-    width: auto;
-    flex: 1;
-    height: 38px;
-  }
-
-  .item-row .item-delete {
-    grid-column: 3;
-    grid-row: 5;
-    width: 38px;
+  .item-edit-grid {
+    grid-template-columns: 1fr;
   }
 
   .shopping-item small {

@@ -71,7 +71,10 @@ export const migrateRecipe = (
   };
 };
 
-export const getItemsForRecipe = (recipe: Recipe) => recipe.ingredients.filter((item) => item.name.trim());
+// 弹窗等场景使用的完整食材清单：先食材、后调味料，各自保持食谱内的原始顺序。
+// 底层数组里两类可能交错（旧数据迁移/历史编辑造成），直接按数组顺序展示会显得乱序。
+export const getItemsForRecipe = (recipe: Recipe) =>
+  [...getRecipeFoodIngredients(recipe), ...getRecipeSeasonings(recipe)].filter((item) => item.name.trim());
 
 export const getRecipeSeasonings = (recipe: Recipe) => recipe.ingredients.filter((item) => item.category === "调味料");
 
