@@ -23,7 +23,7 @@
     </view>
   </view>
 
-  <!-- 食材 -->
+  <!-- 食材：列表呈现，点某一项弹出编辑框 -->
   <view class="section">
     <view class="section-head">
       <text class="section-title">食材</text>
@@ -31,34 +31,37 @@
         <image class="ic ic-14" src="/images/icons/plus.png" />添加
       </button>
     </view>
-    <view class="item-card" wx:for="{{food}}" wx:key="id" wx:for-item="item">
-      <view class="item-top">
-        <input class="input item-name" value="{{item.name}}" data-id="{{item.id}}" data-field="name" bindinput="updateItem" placeholder="名称" />
-        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">
-          <image class="ic ic-15" src="/images/icons/trash.png" />
-        </view>
+    <view class="ing-empty" wx:if="{{food.length == 0}}">
+      <text>还没有食材，点右上角「添加」</text>
+    </view>
+    <view
+      class="ing-row food-row {{dragSection == 'food' && dragIndex == index ? 'dragging' : ''}}"
+      wx:for="{{food}}"
+      wx:key="id"
+      wx:for-item="item"
+      wx:for-index="index"
+      data-section="food"
+      data-id="{{item.id}}"
+      data-index="{{index}}"
+      bindtap="openItemEditor"
+      bindlongpress="onRowLongPress"
+      catchtouchmove="{{dragSection == 'food' ? 'onRowTouchMove' : ''}}"
+      bindtouchend="onRowTouchEnd"
+      bindtouchcancel="onRowTouchEnd"
+      style="{{dragSection == 'food' ? (dragIndex == index ? 'transform: translateY(' + dragOffset + 'px);' : (dragShifts[index] ? 'transform: translateY(' + dragShifts[index] + 'px);' : '')) : ''}}"
+    >
+      <view class="ing-text">
+        <text class="ing-name">{{item.name}}</text>
+        <text class="ing-amount" wx:if="{{item.amountText}}">{{item.amountText}}</text>
       </view>
-      <view class="item-mid">
-        <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
-        <picker class="item-picker" range="{{unitLabels}}" value="{{item.unitIndex}}" data-id="{{item.id}}" bindchange="onUnitChange">
-          <view class="picker-value">{{item.unitLabel}}</view>
-        </picker>
-        <picker class="item-picker" range="{{categories}}" value="{{item.categoryIndex}}" data-id="{{item.id}}" bindchange="onCategoryChange">
-          <view class="picker-value">{{item.category}}</view>
-        </picker>
-      </view>
-      <view class="item-bottom">
-        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">
-          <image class="ic ic-14" src="/images/icons/arrow-up.png" />
-        </view>
-        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">
-          <image class="ic ic-14" src="/images/icons/arrow-down.png" />
-        </view>
+      <view class="ing-edit">
+        <image class="ic ic-14" src="/images/icons/edit.png" />
+        <text>编辑</text>
       </view>
     </view>
   </view>
 
-  <!-- 调味料 -->
+  <!-- 调味料：同上 -->
   <view class="section">
     <view class="section-head">
       <text class="section-title">调味料</text>
@@ -66,29 +69,32 @@
         <image class="ic ic-14" src="/images/icons/plus.png" />添加
       </button>
     </view>
-    <view class="item-card" wx:for="{{seasoning}}" wx:key="id" wx:for-item="item">
-      <view class="item-top">
-        <input class="input item-name" value="{{item.name}}" data-id="{{item.id}}" data-field="name" bindinput="updateItem" placeholder="名称" />
-        <view class="icon-btn danger" data-id="{{item.id}}" bindtap="removeItem">
-          <image class="ic ic-15" src="/images/icons/trash.png" />
-        </view>
+    <view class="ing-empty" wx:if="{{seasoning.length == 0}}">
+      <text>还没有调味料，点右上角「添加」</text>
+    </view>
+    <view
+      class="ing-row seasoning-row {{dragSection == 'seasoning' && dragIndex == index ? 'dragging' : ''}}"
+      wx:for="{{seasoning}}"
+      wx:key="id"
+      wx:for-item="item"
+      wx:for-index="index"
+      data-section="seasoning"
+      data-id="{{item.id}}"
+      data-index="{{index}}"
+      bindtap="openItemEditor"
+      bindlongpress="onRowLongPress"
+      catchtouchmove="{{dragSection == 'seasoning' ? 'onRowTouchMove' : ''}}"
+      bindtouchend="onRowTouchEnd"
+      bindtouchcancel="onRowTouchEnd"
+      style="{{dragSection == 'seasoning' ? (dragIndex == index ? 'transform: translateY(' + dragOffset + 'px);' : (dragShifts[index] ? 'transform: translateY(' + dragShifts[index] + 'px);' : '')) : ''}}"
+    >
+      <view class="ing-text">
+        <text class="ing-name">{{item.name}}</text>
+        <text class="ing-amount" wx:if="{{item.amountText}}">{{item.amountText}}</text>
       </view>
-      <view class="item-mid">
-        <input class="input item-amount" value="{{item.amount}}" data-id="{{item.id}}" data-field="amount" bindinput="updateItem" placeholder="数量" />
-        <picker class="item-picker" range="{{unitLabels}}" value="{{item.unitIndex}}" data-id="{{item.id}}" bindchange="onUnitChange">
-          <view class="picker-value">{{item.unitLabel}}</view>
-        </picker>
-        <picker class="item-picker" range="{{categories}}" value="{{item.categoryIndex}}" data-id="{{item.id}}" bindchange="onCategoryChange">
-          <view class="picker-value">{{item.category}}</view>
-        </picker>
-      </view>
-      <view class="item-bottom">
-        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="-1" bindtap="moveItem">
-          <image class="ic ic-14" src="/images/icons/arrow-up.png" />
-        </view>
-        <view class="icon-btn sm" data-id="{{item.id}}" data-dir="1" bindtap="moveItem">
-          <image class="ic ic-14" src="/images/icons/arrow-down.png" />
-        </view>
+      <view class="ing-edit">
+        <image class="ic ic-14" src="/images/icons/edit.png" />
+        <text>编辑</text>
       </view>
     </view>
   </view>
@@ -100,11 +106,37 @@
   </view>
   <view class="field">
     <text class="field-label">原始文本 / 备注</text>
-    <textarea class="textarea" value="{{draft.rawText}}" data-field="rawText" bindinput="onFieldInput" placeholder="口味、替换食材、提前准备事项" />
+    <textarea class="textarea" value="{{draft.rawText}}" data-field="rawText" bindinput="onFieldInput" placeholder="无" />
   </view>
 
   <view class="form-actions">
     <button class="btn btn-primary btn-block" bindtap="save" disabled="{{!draft.title}}">保存食谱</button>
     <button class="btn btn-ghost btn-block" bindtap="cancel">取消</button>
+  </view>
+</view>
+
+<!-- 单项编辑弹窗（无「单位」栏；删除在右上角，排序用列表长按拖动） -->
+<view class="modal-mask" wx:if="{{editing}}" catchtouchmove="noop">
+  <view class="modal" catchtap="noop">
+    <view class="modal-header">
+      <view class="modal-title">{{editing.section == 'seasoning' ? '编辑调味料' : '编辑食材'}}</view>
+      <view class="icon-btn modal-delete" bindtap="deleteEditingItem">
+        <image class="ic ic-16" src="/images/icons/trash.png" />
+      </view>
+    </view>
+    <view class="modal-body">
+      <view class="field">
+        <text class="field-label">名称</text>
+        <input class="input" value="{{editing.name}}" data-field="name" bindinput="onEditField" placeholder="名称" />
+      </view>
+      <view class="field">
+        <text class="field-label">数量</text>
+        <input class="input" value="{{editing.amount}}" data-field="amount" bindinput="onEditField" placeholder="无" />
+      </view>
+    </view>
+    <view class="modal-footer">
+      <button class="btn btn-ghost" bindtap="cancelEditing">取消</button>
+      <button class="btn btn-primary" bindtap="saveEditing">保存</button>
+    </view>
   </view>
 </view>

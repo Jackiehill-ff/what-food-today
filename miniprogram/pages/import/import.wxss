@@ -15,6 +15,11 @@
   margin-bottom: 20rpx;
 }
 
+/* 「解析」按钮与下方「等待解析」方框留出呼吸空间 */
+.page .empty {
+  margin-top: 32rpx;
+}
+
 .draft-list {
   display: flex;
   flex-direction: column;

@@ -101,32 +101,23 @@ Page({
         target = i;
       }
     }
-    const step = (heights[dragIndex] + (gaps[0] || 0)) * (target > dragIndex ? 1 : -1);
+    // 拖动项 1:1 跟手；兄弟项按拖动项自身占位高度（高度+相邻间隙）整体让位，行高不一时也不会重叠
+    const gapAfter = gaps[dragIndex] != null ? gaps[dragIndex] : gaps[dragIndex - 1] || 0;
+    const span = heights[dragIndex] + gapAfter;
     const dragShifts = rects.map((rect, i) => {
-      if (dragIndex === target || i === dragIndex) {
+      if (i === dragIndex) {
         return 0;
       }
       if (target > dragIndex && i > dragIndex && i <= target) {
-        return -step;
+        return -span;
       }
       if (target < dragIndex && i >= target && i < dragIndex) {
-        return step;
+        return span;
       }
       return 0;
     });
-    // 把被挤开的位移补到拖动项上，让它贴着目标槽位
-    let offset = dy;
-    if (target > dragIndex) {
-      for (let i = dragIndex; i < target; i += 1) {
-        offset += heights[i] + (gaps[i] || 0);
-      }
-    } else if (target < dragIndex) {
-      for (let i = target; i < dragIndex; i += 1) {
-        offset -= heights[i] + (gaps[i] || 0);
-      }
-    }
     this._dragTarget = target;
-    this.setData({ dragOffset: offset, dragShifts });
+    this.setData({ dragOffset: dy, dragShifts });
   },
 
   onItemTouchEnd() {
@@ -274,10 +265,7 @@ Page({
     this.setData({ "edit.unit": UNIT_VALUES[Number(e.detail.value)] || "" });
   },
 
-  onEditCategory(e) {
-    this.setData({ "edit.category": CATEGORIES[Number(e.detail.value)] || "食材" });
-  },
-
+  // 分类不在此弹窗修改（来源食谱中已区分），保存时沿用原分类
   saveEdit() {
     const edit = this.data.edit;
     const name = (edit.name || "").trim();

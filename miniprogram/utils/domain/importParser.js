@@ -23,6 +23,8 @@ const SEASONINGS = [
   // 发酵 / 增稠
   "酵母", "苏打粉", "泡打粉", "淀粉", "玉米淀粉", "水淀粉", "木薯粉",
   "味噌", "白味噌", "红味噌", "味增",
+  // 蒜姜葱类香辛配菜（酱汁行常写「蒜末」等）
+  "蒜末", "蒜泥", "姜末", "葱末", "葱花",
 ];
 
 const SEASONING_SET = new Set(SEASONINGS);
@@ -52,6 +54,23 @@ const FIELD_PATTERN = /^(食材|调味料|调料|做法)\s*[:：]/;
 
 // 做法行：带标签，或「1.」「1、」「①」「第一步」等编号开头
 const STEP_LINE_PATTERN = /^(?:做法|步骤|作法)\s*[:：]|[0-9０-９]+\s*[.、．)）]|[①②③④⑤⑥⑦⑧⑨⑩]|第[一二三四五六七八九十]+[步，.、]/;
+
+// 小节标签行：「标签：内容」，标签不含分隔符且不超过 8 字（食材/调味料/做法/酱汁参考 等）
+const SECTION_LABEL_PATTERN = /^([^\s、，,;；＋+：:]{1,8})\s*[:：]\s*(.*)$/u;
+
+// 看起来是操作说明而非食材名的文字（食材列表里混入的说明不当作食材）
+const INSTRUCTION_HINT_PATTERN =
+  /调到|调至|调成|拌匀|搅拌均匀|搅打|煮至|煮开|焯烫|焯水|翻炒|腌制|腌渍|备用|即可|就可以|切碎|切丁|切片|切丝|切段/;
+
+// 「难度：简单」这类元信息标签：整行跳过、不作为小节
+const META_LABEL_PATTERN = /^(难度|时间|分量|份量|人数|热量|卡路里|小贴士|提示|备注|说明)$/;
+
+// flomo 笔记的噪音行：分隔线、#标签、参考链接、时间戳（可带【n】序号前缀）
+const isNoiseLine = (line) =>
+  /^[-=＝_*]{3,}$/.test(line) ||
+  /^#/.test(line) ||
+  /https?:\/\/|www\./.test(line) ||
+  /^[0-9０-９]{4}[-/.年]/.test(textWithoutIndexMarker(line));
 
 const isIngredientListLine = (line) => /^食材\s*[:：]/.test(line);
 const isSeasoningListLine = (line) => /^(调味料|调料)\s*[:：]/.test(line);
@@ -103,8 +122,23 @@ const stripNameDecorations = (raw) => {
     n = n.replace(/[（(][^（）()]*[）)]\s*$/u, "").trim();
   } while (n !== prev);
   n = n.replace(/[。．.]+\s*$/u, "").trim();
+  n = n.replace(/[：:]+\s*$/u, "").trim();
   n = n.replace(/等\s*$/u, "").trim();
   return n;
+};
+
+// 「盐：适量」→ { head: 盐, tail: 适量 }；没有冒号或名称过长时返回 null
+const colonSplit = (text) => {
+  const idx = text.search(/[：:]/);
+  if (idx < 0) {
+    return null;
+  }
+  const head = text.slice(0, idx).trim();
+  const tail = text.slice(idx + 1).trim();
+  if (!head || head.length > 8 || !tail) {
+    return null;
+  }
+  return { head, tail };
 };
 
 // 「番茄 2个」→ { name: 番茄, amount: 2个 }；没有可拆的用量时原样返回
@@ -123,7 +157,7 @@ const splitNameAmount = (raw) => {
   return { name: cleaned, amount: "" };
 };
 
-// ---------- 括号感知的名称切分（「、，,;；」分隔，括号内不切） ----------
+// ---------- 括号感知的名称切分（「、，,;；＋+」分隔，括号内不切） ----------
 const splitNames = (text) => {
   const parts = [];
   let buf = "";
@@ -135,7 +169,7 @@ const splitNames = (text) => {
     if (ch === "）" || ch === ")") {
       depth = Math.max(0, depth - 1);
     }
-    if ((ch === "、" || ch === "，" || ch === "," || ch === ";" || ch === "；") && depth === 0) {
+    if ((ch === "、" || ch === "，" || ch === "," || ch === ";" || ch === "；" || ch === "＋" || ch === "+") && depth === 0) {
       parts.push(buf);
       buf = "";
     } else {
@@ -153,8 +187,108 @@ const toIngredient = (raw, forcedCategory) => {
   return { ...createBlankItem(category), name, amount };
 };
 
-const namesToIngredients = (line, prefix, forcedCategory) =>
-  splitNames(textAfterField(line, prefix)).map((name) => toIngredient(name, forcedCategory));
+// ---------- 带标签格式的内容收集 ----------
+// 「食材：」标签后既支持同行内容（食材：A、B），也支持多行列表（每行一项）；
+// 「调味料：」切换归类；「酱汁参考：」等其他小节按名称自动识别食材/调味料
+const looksLikeProse = (line) => /[。！？；;！?]$/.test(line) || line.length > 24 || INSTRUCTION_HINT_PATTERN.test(line);
+
+// 「豆腐：半块」这类「名称：用量」直接作为一项（整体就是一个用量词）
+const isAmountOnly = (text) => {
+  if (!text) {
+    return false;
+  }
+  const match = text.match(AMOUNT_TAIL_PATTERN);
+  return Boolean(match) && match[0].trim() === stripNameDecorations(text);
+};
+
+// 碎片里的「名称：用量」也拆开（「调味料：盐：适量」切分后得到「盐：适量」）
+const pushCleanedItem = (cleaned, forced, items) => {
+  const pair = colonSplit(cleaned);
+  if (pair && isAmountOnly(pair.tail)) {
+    items.push({ ...createBlankItem(isSeasoningName(pair.head) ? "调味料" : "食材"), name: pair.head, amount: pair.tail });
+    return;
+  }
+  items.push(toIngredient(cleaned, forced));
+};
+
+// 一段文字拆成食材项：先去括号注释再判断是否操作说明（如「加少量清水调到顺滑状态就可以」不当作食材）
+// forced 传 "食材"/"调味料" 强制归类，传 "" 按名称自动识别
+const namesToItems = (rawText, forced, items) => {
+  splitNames(rawText).forEach((raw) => {
+    // 「【面包部分】高筋面粉」这类子节标记不进名称
+    const cleaned = stripNameDecorations(raw).replace(/^【[^】]*】\s*/, "");
+    if (!cleaned || INSTRUCTION_HINT_PATTERN.test(cleaned)) {
+      return;
+    }
+    pushCleanedItem(cleaned, forced, items);
+  });
+};
+
+const collectSectionItems = (lines, start, end) => {
+  const items = [];
+  let section = "食材";
+  let sectionStartCount = 0;
+  let pendingBlank = false;
+  for (let i = start; i < end; i += 1) {
+    const line = lines[i];
+    if (i === start) {
+      namesToItems(textAfterField(line, INGREDIENT_PREFIX), "食材", items);
+      continue;
+    }
+    if (!line) {
+      pendingBlank = true;
+      continue;
+    }
+    if (STEP_LINE_PATTERN.test(line)) {
+      break;
+    }
+    if (isNoiseLine(line)) {
+      continue;
+    }
+    // 空行后：像食材名的行继续收集，像说明文字的行中断收集（等下一个小节标签）
+    if (pendingBlank && items.length > sectionStartCount && looksLikeProse(line)) {
+      section = "";
+    }
+    pendingBlank = false;
+
+    const labelMatch = line.match(SECTION_LABEL_PATTERN);
+    if (labelMatch) {
+      const label = labelMatch[1];
+      const rest = (labelMatch[2] || "").trim();
+      sectionStartCount = items.length;
+      if (label === "食材") {
+        section = "食材";
+        if (rest) {
+          namesToItems(rest, "食材", items);
+        }
+      } else if (label === "调味料" || label === "调料") {
+        section = "调味料";
+        if (rest) {
+          namesToItems(rest, "调味料", items);
+        }
+      } else if (/^(做法|步骤|作法)$/.test(label)) {
+        break;
+      } else if (META_LABEL_PATTERN.test(label)) {
+        section = "";
+      } else if (rest && isAmountOnly(rest)) {
+        items.push({ ...createBlankItem(isSeasoningName(label) ? "调味料" : "食材"), name: label, amount: rest });
+        section = "";
+      } else {
+        section = "other";
+        if (rest) {
+          namesToItems(rest, "", items);
+        }
+      }
+      continue;
+    }
+
+    if (!section) {
+      continue;
+    }
+    namesToItems(line, section === "调味料" ? "调味料" : section === "食材" ? "食材" : "", items);
+  }
+  return items;
+};
 
 // ---------- 纯文本兜底解析（无「食材：」标签时：按空行/【n】分块，一行一个食材） ----------
 const SKIP_LINE_PATTERN = /^[-=＝_*]{3,}$|^#|^导出时间|^共\s*[0-9０-９]+\s*条|^食谱笔记/;
@@ -186,31 +320,47 @@ const splitIntoBlocks = (lines) => {
 };
 
 const parsePlainBlock = (blockLines) => {
-  const content = blockLines.filter((line) => !SKIP_LINE_PATTERN.test(line));
+  const content = blockLines.filter((line) => !SKIP_LINE_PATTERN.test(line) && !isNoiseLine(line));
   if (!content.length) {
     return null;
   }
   const title = content[0];
   const ingredients = [];
   const methodLines = [];
+  // 小节状态："" = 按名称自动识别，"调味料" = 强制调味料
+  let section = "";
   content.slice(1).forEach((line) => {
-    if (isIngredientListLine(line)) {
-      ingredients.push(...namesToIngredients(line, INGREDIENT_PREFIX, "食材"));
-      return;
-    }
-    if (isSeasoningListLine(line)) {
-      ingredients.push(...namesToIngredients(line, SEASONING_PREFIX, "调味料"));
-      return;
-    }
     if (STEP_LINE_PATTERN.test(line)) {
       methodLines.push(textAfterField(line, METHOD_PREFIX));
       return;
     }
-    splitNames(line).forEach((name) => {
-      if (name) {
-        ingredients.push(toIngredient(name, "食材"));
+    const labelMatch = line.match(SECTION_LABEL_PATTERN);
+    if (labelMatch) {
+      const label = labelMatch[1];
+      const rest = (labelMatch[2] || "").trim();
+      if (label === "食材") {
+        section = "食材";
+        if (rest) {
+          namesToItems(rest, "食材", ingredients);
+        }
+      } else if (label === "调味料" || label === "调料") {
+        section = "调味料";
+        if (rest) {
+          namesToItems(rest, "调味料", ingredients);
+        }
+      } else if (/^(做法|步骤|作法)$/.test(label) || META_LABEL_PATTERN.test(label)) {
+        section = "";
+      } else if (rest && isAmountOnly(rest)) {
+        ingredients.push({ ...createBlankItem(isSeasoningName(label) ? "调味料" : "食材"), name: label, amount: rest });
+      } else {
+        section = "other";
+        if (rest) {
+          namesToItems(rest, "", ingredients);
+        }
       }
-    });
+      return;
+    }
+    namesToItems(line, section === "调味料" ? "调味料" : "", ingredients);
   });
 
   // 没有任何食材/做法结构的块（如导出文件的说明页眉）不生成草稿
@@ -276,19 +426,22 @@ const parseRecipeImportText = (text) => {
             .join("\n")
         : "";
 
-    const blockEnd = methodLineIndex >= 0 ? methodLineIndex : nextIngredientLineIndex;
-    const foodIngredients = namesToIngredients(lines[ingredientLineIndex], INGREDIENT_PREFIX, "食材");
-    const seasoningIngredients = lines
-      .slice(ingredientLineIndex + 1, blockEnd)
-      .filter((line) => isSeasoningListLine(line))
-      .reduce((all, line) => all.concat(namesToIngredients(line, SEASONING_PREFIX, "调味料")), []);
+    // 食材收集范围：到做法标签、下一个食谱标题或下一个「食材：」为止
+    let blockEnd = nextIngredientLineIndex;
+    if (methodLineIndex >= 0 && methodLineIndex < blockEnd) {
+      blockEnd = methodLineIndex;
+    }
+    if (nextTitleLineIndex >= 0 && nextTitleLineIndex < blockEnd) {
+      blockEnd = nextTitleLineIndex;
+    }
+    const ingredients = collectSectionItems(lines, ingredientLineIndex, blockEnd);
 
     const rawStartIndex = titleLineIndex >= 0 ? titleLineIndex : ingredientLineIndex;
     const rawEndIndex = methodEndIndex > rawStartIndex ? methodEndIndex : nextIngredientLineIndex;
 
     return createImportDraft({
       title,
-      ingredients: [...foodIngredients, ...seasoningIngredients],
+      ingredients,
       method,
       rawText: lines.slice(rawStartIndex, rawEndIndex).join("\n"),
       parseFailed: !title || !method,

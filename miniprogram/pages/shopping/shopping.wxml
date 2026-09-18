@@ -126,12 +126,6 @@
             </picker>
           </view>
         </view>
-        <view class="field">
-          <text class="field-label">分类</text>
-          <picker range="{{categories}}" bindchange="onEditCategory">
-            <view class="picker-value">{{edit.category}}</view>
-          </picker>
-        </view>
       </view>
 
       <view class="modal-footer edit-footer">

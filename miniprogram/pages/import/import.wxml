@@ -14,7 +14,7 @@
     class="textarea import-input"
     value="{{importText}}"
     bindinput="onInput"
-    placeholder="例如：&#10;番茄炒蛋&#10;食材：番茄、鸡蛋&#10;调味料：盐、糖&#10;做法：先炒蛋，再加番茄翻炒。"
+    placeholder="把你喜欢的食谱复制过来吧～"
     maxlength="-1"
   />
 
@@ -42,11 +42,38 @@
       <view class="field">
         <view class="field-head">
           <text class="field-label">食材</text>
-          <button class="btn btn-ghost btn-sm" bindtap="addIngredient" data-draft-id="{{draft.id}}">
+          <button class="btn btn-ghost btn-sm" bindtap="addIngredient" data-draft-id="{{draft.id}}" data-category="食材">
             <image class="ic ic-14" src="/images/icons/plus.png" />添加
           </button>
         </view>
-        <view class="ingredient-row" wx:for="{{draft.ingredients}}" wx:key="id" wx:for-item="item">
+        <view
+          class="ingredient-row"
+          wx:for="{{draft.ingredients}}"
+          wx:key="id"
+          wx:for-item="item"
+          wx:if="{{item.category == '食材'}}"
+        >
+          <input class="input" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindinput="updateIngredient" placeholder="名称" />
+          <view class="icon-btn danger" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindtap="removeIngredient">
+            <image class="ic ic-15" src="/images/icons/trash.png" />
+          </view>
+        </view>
+      </view>
+
+      <view class="field">
+        <view class="field-head">
+          <text class="field-label">调味料</text>
+          <button class="btn btn-ghost btn-sm" bindtap="addIngredient" data-draft-id="{{draft.id}}" data-category="调味料">
+            <image class="ic ic-14" src="/images/icons/plus.png" />添加
+          </button>
+        </view>
+        <view
+          class="ingredient-row"
+          wx:for="{{draft.ingredients}}"
+          wx:key="id"
+          wx:for-item="item"
+          wx:if="{{item.category == '调味料'}}"
+        >
           <input class="input" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindinput="updateIngredient" placeholder="名称" />
           <view class="icon-btn danger" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindtap="removeIngredient">
             <image class="ic ic-15" src="/images/icons/trash.png" />

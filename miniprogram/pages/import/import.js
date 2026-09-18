@@ -41,12 +41,27 @@ Page({
   },
 
   addIngredient(e) {
-    const draftId = e.currentTarget.dataset.draftId;
+    const { draftId, category } = e.currentTarget.dataset;
+    const itemCategory = category === "调味料" ? "调味料" : "食材";
     this.setData({
-      drafts: this.data.drafts.map((draft) =>
-        // 新行插到类别最上面，而不是追加到列表末尾
-        draft.id === draftId ? { ...draft, ingredients: [createBlankItem("食材"), ...draft.ingredients] } : draft,
-      ),
+      drafts: this.data.drafts.map((draft) => {
+        if (draft.id !== draftId) {
+          return draft;
+        }
+        // 新行插到对应类别的最上面（该类别还没有条目时：食材放最前，调味料排在食材后）
+        const ingredients = [...draft.ingredients];
+        const firstIndex = ingredients.findIndex((item) => item.category === itemCategory);
+        if (firstIndex === -1) {
+          if (itemCategory === "食材") {
+            ingredients.unshift(createBlankItem(itemCategory));
+          } else {
+            ingredients.push(createBlankItem(itemCategory));
+          }
+        } else {
+          ingredients.splice(firstIndex, 0, createBlankItem(itemCategory));
+        }
+        return { ...draft, ingredients };
+      }),
     });
   },
 

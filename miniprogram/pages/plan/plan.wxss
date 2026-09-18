@@ -36,6 +36,8 @@
   z-index: 10;
   box-shadow: 0 12rpx 32rpx rgba(20, 32, 27, 0.22);
   opacity: 0.96;
+  /* 拖动项 1:1 跟手；兄弟项让位仍走基础 transition 平滑滑动 */
+  transition: none;
 }
 
 /* ===== 分享菜单弹窗 ===== */
@@ -127,6 +129,16 @@
   margin-top: 4rpx;
 }
 
+/* 展开按钮与食谱库卡片一致：无边框裸箭头（点开向上翻），点击区稍大于图标本身 */
+.plan-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  flex-shrink: 0;
+}
+
 .plan-menu {
   width: 100%;
   margin-top: 8rpx;
@@ -155,21 +167,29 @@
 
 .menu-row {
   display: flex;
+  justify-content: flex-end;
   gap: 16rpx;
   margin-top: 12rpx;
 }
 
-.menu-small {
-  flex: 1;
+/* 两按钮等宽、挨着靠右（原生 button UA 固定宽需两级类名覆盖） */
+.menu-row .menu-small {
+  width: 200rpx;
+  flex: none;
+  margin: 0;
 }
 
-.menu-small.danger {
+.menu-row .menu-small.danger {
   color: var(--danger);
   border-color: #e6d4cf;
 }
 
-.menu-date {
-  flex: 1;
+.menu-row .menu-date {
+  flex: none;
+}
+
+.menu-row .menu-date .btn {
+  width: 200rpx;
 }
 
 .picker-panel {

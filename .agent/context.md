@@ -11,7 +11,9 @@
 
 ## Mini-V1 小程序（当前分支）
 
-- 结构：4 个 tab 页（`pages/plan|recipes|shopping|me`）+ `pages/recipe-edit`（编辑已有食谱）+ `pages/import`（新增食谱：粘贴文本解析）；共享组件 `components/ingredient-popup`（加入菜单时的食材勾选弹窗）。
+- 结构：4 个 tab 页（`pages/plan|recipes|shopping|me`）+ `pages/recipe-edit`（编辑已有食谱）+ `pages/import`（新增食谱：粘贴文本解析）；共享组件 `components/ingredient-popup`（加入菜单时的食材勾选弹窗，按食谱 ingredients 原始顺序渲染）。
+- 导入解析（`utils/domain/importParser.js`）：`食材：/调味料：` 标签后同行与逐行多行列表均支持；「酱汁参考：」等其他小节按名称自动归类；全角「＋」分隔、「名称:用量」行、flomo 噪音行（链接/时间戳/#标签/分隔线）防护；改动需跑 flomo 全量回归（`scripts/flomo-export-2026-09-01.txt`）。
+- 编辑食谱页交互：食材/调味料为列表（名称+数量，数量为空不显示），点行或「编辑」弹单项编辑框（仅名称/数量，删除在弹窗右上角，无单位/分类栏，数量占位「无」）；列表支持长按拖动排序（类别内，与菜单计划/采购清单同交互）；菜单计划卡片展开按钮为裸向下箭头（与食谱库一致）。
 - 领域层：`utils/domain/`（recipes/mealPlan/shopping/importParser）复刻 `src/domain/` 逻辑；`utils/storage.js` 沿用 `meal-planner-app-v1` 数据键与迁移；成品图写本地文件（`utils/images.js`，storage 单 key 上限约 1MB，只存路径）。
 - 登录：云函数 `login`/`saveProfile`（云开发环境 cloud1-d5gx91rnaaa9f0be4，环境 ID 在 `utils/config.js` 的 `CLOUD_ENV`）；未开通云开发自动降级本地模式。`cloudfunctions/feedback` 已部署但客户端不再调用（反馈入口已取消，待定下线）。
 - 真机约束：JS 引擎不支持 ES2020+ 语法（`??`/`?.`、`flatMap`、`catch {}`），页面代码用显式 undefined 判断 / `reduce` / `catch (e)`。

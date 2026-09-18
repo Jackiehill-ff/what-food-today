@@ -69,57 +69,79 @@
   color: var(--text);
 }
 
-.item-card {
+/* 食材/调味料列表行：名称 + 数量（有才显示），右侧「编辑」入口；长按拖动排序 */
+.ing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16rpx;
-  padding: 20rpx;
-  margin-bottom: 14rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 12rpx;
+  /* 兄弟项让位时平滑滑动 */
+  transition: transform 120ms ease-out;
 }
 
-.item-top {
+.ing-row.dragging {
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 12rpx 32rpx rgba(20, 32, 27, 0.22);
+  opacity: 0.96;
+  /* 拖动项 1:1 跟手，不让过渡产生弹跳 */
+  transition: none;
+}
+
+.ing-text {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12rpx;
+  flex-wrap: wrap;
 }
 
-.item-name {
-  flex: 1;
-}
-
-.item-mid {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 12rpx;
-}
-
-.item-amount {
-  flex: 1;
-}
-
-.item-picker {
-  flex: 1;
-}
-
-.picker-value {
-  padding: 14rpx 16rpx;
-  border: 1px solid var(--input-border);
-  border-radius: 12rpx;
-  background: #fff;
-  font-size: 26rpx;
-  text-align: center;
+.ing-name {
+  font-size: 28rpx;
+  font-weight: 600;
   color: var(--text);
-  min-height: 64rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.item-bottom {
+.ing-amount {
+  font-size: 26rpx;
+  color: var(--muted);
+}
+
+.ing-edit {
   display: flex;
-  gap: 16rpx;
-  margin-top: 8rpx;
+  align-items: center;
+  gap: 8rpx;
+  padding: 12rpx 18rpx;
+  border: 1px solid #d6ddd4;
+  border-radius: 12rpx;
+  background: #ffffff;
+  color: var(--ghost-ink);
+  font-size: 24rpx;
+  flex-shrink: 0;
+}
+
+.ing-empty {
+  padding: 24rpx;
+  border: 1px dashed var(--input-border);
+  border-radius: 16rpx;
+  background: var(--card);
+  font-size: 24rpx;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 12rpx;
+}
+
+/* 弹窗右上角删除按钮 */
+.modal-delete {
+  flex-shrink: 0;
 }
 
 .form-actions {

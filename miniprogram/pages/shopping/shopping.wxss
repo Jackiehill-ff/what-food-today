@@ -30,6 +30,13 @@
   border-radius: 16rpx;
   background: var(--card);
   box-shadow: var(--shadow-sm);
+  /* 兄弟项让位时平滑滑动 */
+  transition: transform 120ms ease-out;
+}
+
+.shop-item.dragging {
+  /* 拖动项 1:1 跟手，不让过渡产生弹跳 */
+  transition: none;
 }
 
 .shop-item.checked {
@@ -123,14 +130,17 @@
   gap: 16rpx;
 }
 
+.edit-footer .btn {
+  /* 删除与保存等长 */
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
 .edit-delete {
   color: var(--danger);
   border-color: #e6d4cf;
   white-space: nowrap;
-}
-
-.edit-save {
-  flex: 1;
 }
 
 /* 长按拖动排序（与菜单计划页一致） */

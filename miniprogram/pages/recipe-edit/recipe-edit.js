@@ -1,10 +1,8 @@
 const app = getApp();
-const { createId, createTimestamp } = require("../../utils/domain/ids");
+const { createTimestamp } = require("../../utils/domain/ids");
 const { createBlankItem } = require("../../utils/domain/recipes");
 const { isDataUrl, deleteImageFile } = require("../../utils/images");
 
-const UNIT_VALUES = ["", "g", "tsp"];
-const UNIT_LABELS = { "": "无", g: "克 (g)", tsp: "茶匙 (tsp)" };
 const CATEGORIES = ["食材", "调味料"];
 
 const mimeForPath = (filePath) => {
@@ -21,9 +19,14 @@ Page({
     draft: null,
     food: [],
     seasoning: [],
-    unitValues: UNIT_VALUES,
-    unitLabels: ["无", "克 (g)", "茶匙 (tsp)"],
     categories: CATEGORIES,
+    // 逐项编辑弹窗：{ section: 'food'|'seasoning', id, name, amount, isNew }
+    editing: null,
+    // 列表长按拖动排序状态（dragSection: 'food'|'seasoning'）
+    dragSection: "",
+    dragIndex: -1,
+    dragOffset: 0,
+    dragShifts: [],
   },
 
   onLoad(options) {
@@ -32,10 +35,10 @@ Page({
     if (id) {
       const recipe = app.globalData.appState.recipes.find((item) => item.id === id);
       if (recipe) {
-        const ingredients = recipe.ingredients.length
-          ? recipe.ingredients.map((item) => ({ ...item }))
-          : [createBlankItem()];
-        this.setData({ draft: { ...recipe, ingredients }, editingId: id });
+        this.setData({
+          draft: { ...recipe, ingredients: recipe.ingredients.map((item) => ({ ...item })) },
+          editingId: id,
+        });
         this.refreshSections();
         return;
       }
@@ -44,17 +47,14 @@ Page({
     wx.redirectTo({ url: "/pages/import/import" });
   },
 
+  // 列表只展示已有信息：数量/单位为空就不显示（不显示「无」）
   refreshSections() {
     const draft = this.data.draft;
-    const decorate = (item) => ({
-      ...item,
-      unitLabel: UNIT_LABELS[item.unit] || "无",
-      unitIndex: UNIT_VALUES.indexOf(item.unit) > -1 ? UNIT_VALUES.indexOf(item.unit) : 0,
-      categoryIndex: CATEGORIES.indexOf(item.category) > -1 ? CATEGORIES.indexOf(item.category) : 0,
-    });
+    const decorate = (item) => ({ ...item, amountText: [item.amount, item.unit].filter(Boolean).join("") });
+    const hasContent = (item) => item.name.trim() || (item.amount || "").trim();
     this.setData({
-      food: draft.ingredients.filter((item) => item.category === "食材").map(decorate),
-      seasoning: draft.ingredients.filter((item) => item.category === "调味料").map(decorate),
+      food: draft.ingredients.filter((item) => item.category === "食材" && hasContent(item)).map(decorate),
+      seasoning: draft.ingredients.filter((item) => item.category === "调味料" && hasContent(item)).map(decorate),
     });
   },
 
@@ -62,6 +62,8 @@ Page({
     const field = e.currentTarget.dataset.field;
     this.setData({ [`draft.${field}`]: e.detail.value });
   },
+
+  noop() {},
 
   // ---- 图片 ----
   chooseImage() {
@@ -109,30 +111,12 @@ Page({
     this.setData({ "draft.image": "" });
   },
 
-  // ---- 食材 / 调味料 ----
-  updateItem(e) {
-    const { id, field } = e.currentTarget.dataset;
-    const value = e.detail.value;
-    const draft = this.data.draft;
-    const ingredients = draft.ingredients.map((item) => (item.id === id ? { ...item, [field]: value } : item));
-    this.setData({ "draft.ingredients": ingredients });
-    this.refreshSections();
+  // ---- 食材 / 调味料：列表 + 逐项编辑弹窗 ----
+  findItem(id) {
+    return this.data.draft.ingredients.filter((item) => item.id === id)[0];
   },
 
-  onUnitChange(e) {
-    const { id } = e.currentTarget.dataset;
-    const value = UNIT_VALUES[Number(e.detail.value)] || "";
-    const draft = this.data.draft;
-    const ingredients = draft.ingredients.map((item) => (item.id === id ? { ...item, unit: value } : item));
-    this.setData({ "draft.ingredients": ingredients });
-    this.refreshSections();
-  },
-
-  onCategoryChange(e) {
-    const { id } = e.currentTarget.dataset;
-    const value = CATEGORIES[Number(e.detail.value)] || "食材";
-    const draft = this.data.draft;
-    const ingredients = draft.ingredients.map((item) => (item.id === id ? { ...item, category: value } : item));
+  setIngredients(ingredients) {
     this.setData({ "draft.ingredients": ingredients });
     this.refreshSections();
   },
@@ -154,41 +138,176 @@ Page({
     } else {
       ingredients.splice(firstIndex, 0, blank);
     }
-    this.setData({ "draft.ingredients": ingredients });
-    this.refreshSections();
+    this.setIngredients(ingredients);
+    // 新行立即弹出编辑框，直接填写
+    this.openEditor(category === "调味料" ? "seasoning" : "food", blank.id, true);
   },
 
-  removeItem(e) {
-    const { id } = e.currentTarget.dataset;
-    const draft = this.data.draft;
-    const ingredients = draft.ingredients.filter((item) => item.id !== id);
-    this.setData({ "draft.ingredients": ingredients.length ? ingredients : [createBlankItem()] });
-    this.refreshSections();
-  },
-
-  moveItem(e) {
-    const { id, dir } = e.currentTarget.dataset;
-    const direction = Number(dir);
-    const draft = this.data.draft;
-    const ingredients = [...draft.ingredients];
-    const index = ingredients.findIndex((item) => item.id === id);
-    if (index === -1) {
+  openEditor(section, id, isNew) {
+    const item = this.findItem(id);
+    if (!item) {
       return;
     }
-    const targetCategory = ingredients[index].category;
-    let neighbor = -1;
-    for (let i = index + direction; i >= 0 && i < ingredients.length; i += direction) {
-      if (ingredients[i].category === targetCategory) {
-        neighbor = i;
-        break;
+    // 所在分区即分类（食材区/调味料区），弹窗内不再提供分类切换
+    this.setData({
+      editing: {
+        section,
+        id,
+        isNew: Boolean(isNew),
+        name: item.name,
+        amount: item.amount,
+      },
+    });
+  },
+
+  openItemEditor(e) {
+    const { section, id } = e.currentTarget.dataset;
+    this.openEditor(section, id, false);
+  },
+
+  onEditField(e) {
+    const field = e.currentTarget.dataset.field;
+    this.setData({ [`editing.${field}`]: e.detail.value });
+  },
+
+  saveEditing() {
+    const editing = this.data.editing;
+    if (!editing) {
+      return;
+    }
+    const ingredients = this.data.draft.ingredients.map((item) =>
+      item.id === editing.id ? { ...item, name: editing.name, amount: editing.amount } : item,
+    );
+    this.setData({ editing: null });
+    this.setIngredients(ingredients);
+  },
+
+  cancelEditing() {
+    const editing = this.data.editing;
+    this.setData({ editing: null });
+    // 新加又没填内容的行：取消时移除，避免列表残留空行
+    if (editing && editing.isNew) {
+      const item = this.findItem(editing.id);
+      if (item && !item.name.trim() && !(item.amount || "").trim()) {
+        this.setIngredients(this.data.draft.ingredients.filter((entry) => entry.id !== editing.id));
       }
     }
-    if (neighbor === -1) {
+  },
+
+  deleteEditingItem() {
+    const editing = this.data.editing;
+    if (!editing) {
       return;
     }
-    [ingredients[index], ingredients[neighbor]] = [ingredients[neighbor], ingredients[index]];
-    this.setData({ "draft.ingredients": ingredients });
-    this.refreshSections();
+    const ingredients = this.data.draft.ingredients.filter((item) => item.id !== editing.id);
+    this.setData({ editing: null });
+    this.setIngredients(ingredients);
+  },
+
+  // ---- 列表长按拖动排序（同一类别内，交互与菜单计划/采购清单一致） ----
+  onRowLongPress(e) {
+    const { section, index } = e.currentTarget.dataset;
+    const rows = this.data[section];
+    if (!rows || rows.length < 2 || this.data.editing) {
+      return;
+    }
+    const touch = e.touches && e.touches[0];
+    if (!touch) {
+      return;
+    }
+    const selector = section === "food" ? ".food-row" : ".seasoning-row";
+    wx.createSelectorQuery()
+      .in(this)
+      .selectAll(selector)
+      .boundingClientRect((rects) => {
+        if (!rects || rects.length !== rows.length) {
+          return;
+        }
+        this._dragRects = rects;
+        this._dragStartY = touch.clientY;
+        this.setData({ dragSection: section, dragIndex: index, dragOffset: 0, dragShifts: rects.map(() => 0) });
+        wx.vibrateShort({ type: "medium", fail: () => {} });
+      })
+      .exec();
+  },
+
+  onRowTouchMove(e) {
+    const dragSection = this.data.dragSection;
+    const dragIndex = this.data.dragIndex;
+    if (!dragSection || dragIndex < 0 || !this._dragRects) {
+      return;
+    }
+    const touch = e.touches && e.touches[0];
+    if (!touch) {
+      return;
+    }
+    const dy = touch.clientY - this._dragStartY;
+    const rects = this._dragRects;
+    const heights = rects.map((rect) => rect.height);
+    const gaps = rects.slice(1).map((rect, i) => rect.top - (rects[i].top + heights[i]));
+    const draggedCenter = rects[dragIndex].top + heights[dragIndex] / 2 + dy;
+    // 计算拖动项当前落在哪个槽位
+    let target = dragIndex;
+    for (let i = 0; i < rects.length; i += 1) {
+      const center = rects[i].top + heights[i] / 2;
+      if (Math.abs(draggedCenter - center) < Math.abs(draggedCenter - (rects[target].top + heights[target] / 2))) {
+        target = i;
+      }
+    }
+    // 拖动项 1:1 跟手；兄弟项按拖动项自身占位高度（高度+相邻间隙）整体让位
+    const gapAfter = gaps[dragIndex] != null ? gaps[dragIndex] : gaps[dragIndex - 1] || 0;
+    const span = heights[dragIndex] + gapAfter;
+    const dragShifts = rects.map((rect, i) => {
+      if (i === dragIndex) {
+        return 0;
+      }
+      if (target > dragIndex && i > dragIndex && i <= target) {
+        return -span;
+      }
+      if (target < dragIndex && i >= target && i < dragIndex) {
+        return span;
+      }
+      return 0;
+    });
+    this._dragTarget = target;
+    this.setData({ dragOffset: dy, dragShifts });
+  },
+
+  onRowTouchEnd() {
+    const { dragSection, dragIndex } = this.data;
+    if (!dragSection || dragIndex < 0) {
+      return;
+    }
+    const target = this._dragTarget;
+    this._dragTarget = undefined;
+    this.setData({ dragSection: "", dragIndex: -1, dragOffset: 0, dragShifts: [] });
+    if (target === undefined || target === dragIndex) {
+      return;
+    }
+    this.reorderSection(dragSection, dragIndex, target);
+    wx.vibrateShort({ type: "light", fail: () => {} });
+  },
+
+  // 把该类别的可见项按新顺序写回 ingredients（其他类别与其他项位置不动）
+  reorderSection(section, from, to) {
+    const category = section === "food" ? "食材" : "调味料";
+    const draft = this.data.draft;
+    const ids = this.data[section].map((item) => item.id);
+    const [moved] = ids.splice(from, 1);
+    ids.splice(to, 0, moved);
+    let k = 0;
+    const ingredients = draft.ingredients.map((item) => {
+      if (item.category !== category) {
+        return item;
+      }
+      const nextId = ids[k];
+      k += 1;
+      if (!nextId) {
+        return item;
+      }
+      return draft.ingredients.filter((entry) => entry.id === nextId)[0] || item;
+    });
+    this.setIngredients(ingredients);
   },
 
   // ---- 保存 / 取消 ----

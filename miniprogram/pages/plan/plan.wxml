@@ -25,7 +25,7 @@
   <view class="plan-list">
     <view class="empty" wx:if="{{planned.length == 0}}">
       <text class="empty-title">这一天还没有安排</text>
-      <text class="empty-text">在下方搜索食谱，选择后会弹出食材勾选，可直接加入采购清单。</text>
+      <text class="empty-text">在下方搜索食谱，勾选食材加入采购清单。</text>
     </view>
 
     <view
@@ -49,8 +49,11 @@
         <view class="plan-title">{{recipe.title}}</view>
         <view class="plan-count">{{recipe.countLabel}}</view>
       </view>
-      <view class="icon-btn" bindtap="toggleMenu" data-id="{{recipe.id}}">
-        <image class="ic ic-16" src="/images/icons/more.png" />
+      <view class="plan-toggle" bindtap="toggleMenu" data-id="{{recipe.id}}">
+        <image
+          class="ic ic-18"
+          src="{{openMenuId == recipe.id ? '/images/icons/chevron-up.png' : '/images/icons/chevron-down.png'}}"
+        />
       </view>
 
       <view class="plan-menu" wx:if="{{openMenuId == recipe.id}}">
