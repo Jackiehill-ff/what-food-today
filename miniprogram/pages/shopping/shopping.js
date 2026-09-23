@@ -2,10 +2,13 @@ const app = getApp();
 const { sortShoppingItems, maxShoppingOrder } = require("../../utils/domain/shopping");
 const { createId } = require("../../utils/domain/ids");
 const { CATEGORIES } = require("../../utils/domain/constants");
+const { createPageShare } = require("../../utils/share");
 
 const UNIT_VALUES = ["", "g", "tsp"];
 
 Page({
+  ...createPageShare({ title: "计划有饭 · 采购清单", path: "/pages/shopping/shopping" }),
+
   data: {
     items: [],
     manualOpen: false,

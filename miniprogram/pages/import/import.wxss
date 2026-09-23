@@ -10,6 +10,13 @@
   margin-bottom: 16rpx;
 }
 
+/* 关键字段提示：一行一条 */
+.hint-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
 .import-input {
   min-height: 280rpx;
   margin-bottom: 20rpx;
@@ -35,16 +42,12 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* 仅剩「需补全」徽标时靠右上 */
 .draft-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 16rpx;
-}
-
-.draft-title {
-  font-size: 30rpx;
-  font-weight: 700;
 }
 
 .warning {
@@ -87,8 +90,14 @@
   gap: 12rpx;
 }
 
-.ingredient-row .input {
+.ingredient-row .ing-name {
   flex: 1;
+  min-width: 180rpx;
+}
+
+.ingredient-row .ing-amount {
+  width: 300rpx;
+  flex: none;
 }
 
 .save-btn {

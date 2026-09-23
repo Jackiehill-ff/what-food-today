@@ -3,10 +3,13 @@ const { migrateAppState } = require("../../utils/storage");
 const { isDataUrl, readImageAsDataUrlAsync } = require("../../utils/images");
 const { getTodayKey } = require("../../utils/domain/mealPlan");
 const { login, saveProfile } = require("../../utils/cloud");
+const { createPageShare } = require("../../utils/share");
 
 const maskOpenid = (openid) => (openid ? `${openid.slice(0, 6)}****${openid.slice(-4)}` : "");
 
 Page({
+  ...createPageShare({ title: "计划有饭 · 今天吃啥？", path: "/pages/me/me" }),
+
   data: {
     isCloudEnabled: false,
     syncTagText: "本地模式",

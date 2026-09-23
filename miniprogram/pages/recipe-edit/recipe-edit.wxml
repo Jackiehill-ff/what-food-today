@@ -102,11 +102,11 @@
   <!-- 做法 / 备注 -->
   <view class="field">
     <text class="field-label">做法步骤</text>
-    <textarea class="textarea" value="{{draft.method}}" data-field="method" bindinput="onFieldInput" placeholder="每行写一步，实际做饭时更容易扫读。" />
+    <textarea class="textarea" value="{{draft.method}}" data-field="method" bindinput="onFieldInput" maxlength="-1" placeholder="每行写一步，实际做饭时更容易扫读。" />
   </view>
   <view class="field">
     <text class="field-label">原始文本 / 备注</text>
-    <textarea class="textarea" value="{{draft.rawText}}" data-field="rawText" bindinput="onFieldInput" placeholder="无" />
+    <textarea class="textarea" value="{{draft.rawText}}" data-field="rawText" bindinput="onFieldInput" maxlength="-1" placeholder="无" />
   </view>
 
   <view class="form-actions">

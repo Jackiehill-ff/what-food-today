@@ -5,8 +5,11 @@ const { getItemsForRecipe } = require("../../utils/domain/recipes");
 const { addSelectedToShopping } = require("../../utils/shoppingOps");
 const { isDataUrl, deleteImageFile } = require("../../utils/images");
 const { decorateRecipe } = require("../../utils/presenter");
+const { createPageShare } = require("../../utils/share");
 
 Page({
+  ...createPageShare({ title: "计划有饭 · 食谱库", path: "/pages/recipes/recipes" }),
+
   data: {
     recipeSearch: "",
     recipeCategory: "",

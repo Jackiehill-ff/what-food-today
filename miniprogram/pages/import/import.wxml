@@ -6,8 +6,11 @@
     <text class="page-title">新增食谱</text>
   </view>
 
-  <view class="hint">
-    粘贴食谱文本后点「解析」：支持「食材：/调味料：/做法：」分段格式，也支持一行一个食材的纯文本（自动区分食材与调味料），可一次解析多个食谱。
+  <view class="hint hint-lines">
+    <text>食谱文本需包含：</text>
+    <text>· 菜名</text>
+    <text>· 食材：名称 + 分量</text>
+    <text>· 做法：每行一步</text>
   </view>
 
   <textarea
@@ -29,9 +32,8 @@
 
   <view class="draft-list">
     <view class="draft-card" wx:for="{{drafts}}" wx:key="id" wx:for-item="draft" wx:for-index="idx">
-      <view class="draft-head">
-        <text class="draft-title">预览 {{idx + 1}}</text>
-        <text class="warning" wx:if="{{draft.parseFailed}}">需补全</text>
+      <view class="draft-head" wx:if="{{draft.parseFailed}}">
+        <text class="warning">需补全</text>
       </view>
 
       <view class="field">
@@ -53,7 +55,8 @@
           wx:for-item="item"
           wx:if="{{item.category == '食材'}}"
         >
-          <input class="input" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindinput="updateIngredient" placeholder="名称" />
+          <input class="input ing-name" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" data-field="name" bindinput="updateIngredient" placeholder="名称" />
+          <input class="input ing-amount" value="{{item.amount}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" data-field="amount" bindinput="updateIngredient" placeholder="分量" />
           <view class="icon-btn danger" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindtap="removeIngredient">
             <image class="ic ic-15" src="/images/icons/trash.png" />
           </view>
@@ -74,7 +77,8 @@
           wx:for-item="item"
           wx:if="{{item.category == '调味料'}}"
         >
-          <input class="input" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindinput="updateIngredient" placeholder="名称" />
+          <input class="input ing-name" value="{{item.name}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" data-field="name" bindinput="updateIngredient" placeholder="名称" />
+          <input class="input ing-amount" value="{{item.amount}}" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" data-field="amount" bindinput="updateIngredient" placeholder="分量" />
           <view class="icon-btn danger" data-draft-id="{{draft.id}}" data-item-id="{{item.id}}" bindtap="removeIngredient">
             <image class="ic ic-15" src="/images/icons/trash.png" />
           </view>
@@ -83,12 +87,12 @@
 
       <view class="field">
         <text class="field-label">做法</text>
-        <textarea class="textarea" value="{{draft.method}}" data-id="{{draft.id}}" data-field="method" bindinput="updateDraft" />
+        <textarea class="textarea" value="{{draft.method}}" data-id="{{draft.id}}" data-field="method" bindinput="updateDraft" maxlength="-1" />
       </view>
 
-      <view class="field" wx:if="{{draft.rawText && draft.parseFailed}}">
+      <view class="field" wx:if="{{draft.rawText}}">
         <text class="field-label">原始文本</text>
-        <textarea class="textarea" value="{{draft.rawText}}" data-id="{{draft.id}}" data-field="rawText" bindinput="updateDraft" />
+        <textarea class="textarea" value="{{draft.rawText}}" data-id="{{draft.id}}" data-field="rawText" bindinput="updateDraft" maxlength="-1" />
       </view>
     </view>
   </view>

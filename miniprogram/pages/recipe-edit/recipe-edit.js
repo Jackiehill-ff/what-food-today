@@ -2,6 +2,7 @@ const app = getApp();
 const { createTimestamp } = require("../../utils/domain/ids");
 const { createBlankItem } = require("../../utils/domain/recipes");
 const { isDataUrl, deleteImageFile } = require("../../utils/images");
+const { createPageShare } = require("../../utils/share");
 
 const CATEGORIES = ["食材", "调味料"];
 
@@ -14,6 +15,9 @@ const mimeForPath = (filePath) => {
 };
 
 Page({
+  // 编辑页分享落地到首页（别人打开编辑页无数据）
+  ...createPageShare({ title: "计划有饭 · 今天吃啥？" }),
+
   data: {
     editingId: "",
     draft: null,

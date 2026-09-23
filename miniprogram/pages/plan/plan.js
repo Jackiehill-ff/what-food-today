@@ -11,8 +11,11 @@ const { splitKeywords, matchesAllKeywords } = require("../../utils/domain/search
 const { getItemsForRecipe } = require("../../utils/domain/recipes");
 const { addSelectedToShopping } = require("../../utils/shoppingOps");
 const { decorateRecipe } = require("../../utils/presenter");
+const { createPageShare } = require("../../utils/share");
 
 Page({
+  ...createPageShare({ title: "计划有饭 · 今天吃啥？" }),
+
   data: {
     planDate: "",
     dayHeader: "",

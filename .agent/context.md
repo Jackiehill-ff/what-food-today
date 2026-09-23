@@ -11,8 +11,8 @@
 
 ## Mini-V1 小程序（当前分支）
 
-- 结构：4 个 tab 页（`pages/plan|recipes|shopping|me`）+ `pages/recipe-edit`（编辑已有食谱）+ `pages/import`（新增食谱：粘贴文本解析）；共享组件 `components/ingredient-popup`（加入菜单时的食材勾选弹窗，按食谱 ingredients 原始顺序渲染）。
-- 导入解析（`utils/domain/importParser.js`）：`食材：/调味料：` 标签后同行与逐行多行列表均支持；「酱汁参考：」等其他小节按名称自动归类；全角「＋」分隔、「名称:用量」行、flomo 噪音行（链接/时间戳/#标签/分隔线）防护；改动需跑 flomo 全量回归（`scripts/flomo-export-2026-09-01.txt`）。
+- 结构：4 个 tab 页（`pages/plan|recipes|shopping|me`）+ `pages/recipe-edit`（编辑已有食谱）+ `pages/import`（新增食谱：粘贴文本解析，**单食谱导入**——解析出多个草稿只取第一个并提示）；共享组件 `components/ingredient-popup`（加入菜单时的食材勾选弹窗，按食谱 ingredients 原始顺序渲染）。
+- 导入解析（`utils/domain/importParser.js`，2026-09-23 重写为「先分块再解析」）：整段先按【n】序号、「菜谱一/二」前缀、①②③子菜谱标题（①行且下一行是小节头才切）、空行切块，首行不像标题的续块并回前块，再按块内有无食材头走「标签解析」或「纯文本兜底」。小节头支持 `食材（2人份）`、无冒号 `做法`/`调味料`、`【做法步骤】`、`小贴士/关键提醒` 备注头与无冒号子节（`纯素酱汁`，需下一行像「名称 数量」）；分量支持分数（½茶匙）、区间（1-2大勺）、括号备注整体保留（`300克（黄心，去皮切块）`）；「名（配料列表）」行展开成多项；散文/说明小节跳过。全角「＋」分隔、「名称:用量」行、flomo 噪音行（链接/时间戳/#标签/分隔线）防护；「或」并列名（苹果醋或柠檬汁）全在调味料名单才归调味料。改动需跑 flomo 全量回归（`scripts/flomo-export-2026-09-01.txt`，基准：145 草稿/零垃圾/旧 124 标题剥①后零缺失）。textarea 必须显式 `maxlength="-1"`（默认 140 会截断长文本）。
 - 编辑食谱页交互：食材/调味料为列表（名称+数量，数量为空不显示），点行或「编辑」弹单项编辑框（仅名称/数量，删除在弹窗右上角，无单位/分类栏，数量占位「无」）；列表支持长按拖动排序（类别内，与菜单计划/采购清单同交互）；菜单计划卡片展开按钮为裸向下箭头（与食谱库一致）。
 - 领域层：`utils/domain/`（recipes/mealPlan/shopping/importParser）复刻 `src/domain/` 逻辑；`utils/storage.js` 沿用 `meal-planner-app-v1` 数据键与迁移；成品图写本地文件（`utils/images.js`，storage 单 key 上限约 1MB，只存路径）。
 - 登录：云函数 `login`/`saveProfile`（云开发环境 cloud1-d5gx91rnaaa9f0be4，环境 ID 在 `utils/config.js` 的 `CLOUD_ENV`）；未开通云开发自动降级本地模式。`cloudfunctions/feedback` 已部署但客户端不再调用（反馈入口已取消，待定下线）。
@@ -20,7 +20,7 @@
 - WXSS 实测规律：原生 `button` 的 UA 固定宽 184px 会盖过单类名 `width`，覆盖需两级类名（如 `.profile-row .logout-btn`）或 WXML 内联样式。
 - 分享菜单：canvas type="2d" 必须放在可见弹窗内（离屏挂载真机不渲染、导出失败）；导出后用 `wx.showShareImageMenu`（`wx.shareImageMessage` 不存在）。
 - 排序：菜单计划与采购清单均长按拖动；采购项可选 `order` 字段持久化手动顺序（从未拖过保持「分类 → 添加时间」，新项 `max+1` 接尾）。
-- 品牌：「计划有饭」（米饭的饭）；原生导航栏标题为空，各页自绘「图标 + 标题」页头。
+- 品牌：「计划有饭」（米饭的饭）；原生导航栏标题为空，各页自绘「图标 + 标题」页头。分享：全部页面经 `utils/share.js` 的 `createPageShare({ title, path, query })` mixin 注册 `onShareAppMessage`/`onShareTimeline`（页面必须定义这两个回调转发/朋友圈入口才可用），分享图为包内 `images/brand/app-icon.png`；朋友圈打开是微信「单页模式」。
 - 联调：开发者工具 CLI `cli auto --project <仓库根> --auto-port 9420` + miniprogram-automator；`switchTab` 会抛错、统一用 `reLaunch`；DevTools 重启会清模拟器 storage。
 - 发布状态：开发版本 1.0.0（2026-09-06 上传）不含此后修复，真机验证前需重新上传。
 

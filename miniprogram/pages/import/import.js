@@ -2,8 +2,11 @@ const app = getApp();
 const { parseRecipeImportText } = require("../../utils/domain/importParser");
 const { createBlankItem } = require("../../utils/domain/recipes");
 const { createTimestamp } = require("../../utils/domain/ids");
+const { createPageShare } = require("../../utils/share");
 
 Page({
+  ...createPageShare({ title: "计划有饭 · 导入食谱", path: "/pages/import/import" }),
+
   data: {
     importText: "",
     drafts: [],
@@ -15,9 +18,17 @@ Page({
   },
 
   parse() {
-    const drafts = parseRecipeImportText(this.data.importText);
-    const needsFix = drafts.some((draft) => !draft.title.trim() || !draft.method.trim());
-    this.setData({ drafts, importStatus: needsFix ? "有内容需要手动补全" : "" });
+    // 单食谱导入：解析出多个草稿时只取第一个
+    const all = parseRecipeImportText(this.data.importText);
+    const drafts = [all[0]];
+    const needsFix = drafts.some(
+      (draft) => draft.parseFailed || !draft.title.trim() || !draft.method.trim(),
+    );
+    let importStatus = needsFix ? "有内容需要手动补全" : "";
+    if (all.length > 1) {
+      importStatus = `检测到 ${all.length} 个食谱，仅导入第一个` + (needsFix ? "；有内容需要手动补全" : "");
+    }
+    this.setData({ drafts, importStatus });
   },
 
   updateDraft(e) {
@@ -29,12 +40,13 @@ Page({
   },
 
   updateIngredient(e) {
-    const { draftId, itemId } = e.currentTarget.dataset;
+    const { draftId, itemId, field } = e.currentTarget.dataset;
     const value = e.detail.value;
+    const key = field === "amount" ? "amount" : "name";
     this.setData({
       drafts: this.data.drafts.map((draft) =>
         draft.id === draftId
-          ? { ...draft, ingredients: draft.ingredients.map((item) => (item.id === itemId ? { ...item, name: value } : item)) }
+          ? { ...draft, ingredients: draft.ingredients.map((item) => (item.id === itemId ? { ...item, [key]: value } : item)) }
           : draft,
       ),
     });
