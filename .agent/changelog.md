@@ -14,6 +14,7 @@
 - 采购清单支持手柄拖动排序：新增 `ShoppingListItem.order`（`migrateShoppingItem` 透传，修复刷新即丢）；未勾选拖过的按手动序在前、没拖过的保持「分类→添加时间」，已勾选仍按勾选时间垫底；新采购项接在手动序末尾。
 - `npm run build` 通过；浏览器实测（桌面 + 390px）：三处拖动均持久化、编辑弹窗无上移/下移、导入端到端（空食材段文本→分区预览→保存）、移动端采购行无溢出。`npx cap sync android` + Gradle assembleDebug 重新打包，根目录 `what-food-today.apk` 已更新（JDK 用 Homebrew openjdk@21，SDK 在 `~/Library/Android/sdk`）。
 - 洁癖收尾：`docs/daily-menu-checklist.md` 刷新到本轮现状（拖动交互、弹窗无上移/下移、导入分区与做法提取、采购手动序规则）；README 补「打包 Android APK」一节。
+- 合并 main（`e6cee88`）并部署 Pages 成功（线上主包含本轮代码特征）；工作区残留 `miniprogram/project.private.config.json`（微信开发者工具私有配置，正式源码在 Mini-V1 分支）经用户确认删除。
 
 
 ## 2026-09-17（洁癖收尾：文档一致性整理）
