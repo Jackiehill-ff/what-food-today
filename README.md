@@ -48,3 +48,17 @@ https://github.com/Jackiehill-ff/What-food-today
 ```text
 https://jackiehill-ff.github.io/what-food-today/
 ```
+
+## 打包 Android APK（debug）
+
+依赖：Android SDK（`~/Library/Android/sdk`，platforms 35/36）和 JDK 21（Homebrew keg 版 `openjdk@21`，系统 `java` 命令找不到是正常的）。
+
+```bash
+npm run build
+npx cap sync android
+cd android
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew assembleDebug
+cp app/build/outputs/apk/debug/app-debug.apk ../what-food-today.apk
+```
+
+产物为 debug 签名；正式版需自签 keystore 后打 release。

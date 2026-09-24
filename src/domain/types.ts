@@ -66,4 +66,6 @@ export type ShoppingListItem = {
   checked: boolean;
   // 最近一次勾选时间；排序时最新勾选的排最后
   checkedAt?: number;
+  // 手动排序号：拖动落位后写入（0..n-1）；旧数据没有该字段，保持「分类 → 添加时间」
+  order?: number;
 };
