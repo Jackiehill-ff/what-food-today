@@ -552,10 +552,61 @@ label {
   color: #819087;
   background: transparent;
   cursor: grab;
+  /* 触屏上拖动手柄时不能触发页面滚动 */
+  touch-action: none;
 }
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+/* 拖动排序：行位移走过渡；拖动中的行浮起（跟手位移由 JS 内联关闭过渡） */
+.item-list,
+.shopping-list {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.item-list-row,
+.shopping-row,
+.plan-card {
+  transition: transform 160ms ease-out;
+}
+
+.item-list-row.dragging,
+.shopping-row.dragging,
+.plan-card.dragging {
+  position: relative;
+  z-index: 10;
+  border-color: #88a394;
+  box-shadow: 0 8px 22px rgba(20, 32, 27, 0.16);
+}
+
+.item-list-row.dragging {
+  background: #ffffff;
+}
+
+.item-drag-handle {
+  width: 24px;
+  height: 40px;
+}
+
+/* 采购项行：手柄 + 勾选卡片 */
+.shopping-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shopping-row .shopping-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-drag-handle {
+  width: 24px;
+  height: 40px;
+  flex-shrink: 0;
 }
 
 .form-actions,

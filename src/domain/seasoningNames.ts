@@ -24,6 +24,9 @@ const SEASONINGS = new Set([
 const SEASONING_SUFFIXES = ["粉", "酱", "醋", "糖", "盐", "油", "汁", "精"];
 const EXCLUDED_NAMES = new Set(["牛油果", "油桃", "糖蒜", "盐水鸭", "油条", "酱牛肉", "果汁"]);
 
+// 词表本体（长词在前），供导入解析在做法原文中按词锚定扫描调味料
+export const SEASONING_WORDS = Array.from(SEASONINGS).sort((a, b) => b.length - a.length);
+
 export const isSeasoningName = (name: string): boolean => {
   const n = (name ?? "").trim();
   if (!n || EXCLUDED_NAMES.has(n)) {
