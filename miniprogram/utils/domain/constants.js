@@ -1,5 +1,6 @@
 const STORAGE_KEY = "meal-planner-app-v1";
 const SYNC_STORAGE_KEY = "meal-planner-sync-v1";
+const RECIPE_SYNC_STORAGE_KEY = "meal-planner-recipe-sync-v1";
 
 const CATEGORIES = ["食材", "调味料"];
 
@@ -17,6 +18,7 @@ const DEFAULT_STATE = {
 module.exports = {
   STORAGE_KEY,
   SYNC_STORAGE_KEY,
+  RECIPE_SYNC_STORAGE_KEY,
   CATEGORIES,
   UNIT_OPTIONS,
   UNIT_LABELS,

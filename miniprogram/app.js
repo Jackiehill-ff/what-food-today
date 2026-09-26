@@ -1,5 +1,6 @@
 const { loadAppState, saveAppState, loadSyncMetadata, saveSyncMetadata } = require("./utils/storage");
 const { CLOUD_ENV } = require("./utils/config");
+const recipeSync = require("./utils/recipeSync");
 
 const USER_STORAGE_KEY = "meal-planner-user-v1";
 
@@ -29,12 +30,18 @@ App({
     this.globalData.appState = loadAppState();
     this.globalData.syncMetadata = loadSyncMetadata();
     this.globalData.user = wx.getStorageSync(USER_STORAGE_KEY) || null;
+
+    // 已登录用户启动时拉取云端最新食谱（静默；未登录/云不可用时内部自动跳过）
+    recipeSync.scheduleSync(800);
   },
 
-  // 数据修改后的统一保存入口
-  saveState() {
+  // 数据修改后的统一保存入口；skipSyncSchedule 用于云同步自身回写，避免同步触发同步
+  saveState(options) {
     if (!saveAppState(this.globalData.appState)) {
       this._warnSaveFailure();
+    }
+    if (!options || !options.skipSyncSchedule) {
+      recipeSync.scheduleSync();
     }
   },
 

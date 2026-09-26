@@ -62,8 +62,12 @@ const readImageAsDataUrlAsync = (filePath) =>
   });
 
 // 删除本地图片文件（食谱删除 / 更换图片时清理，避免残留占用存储）
+// cloud:// 是云存储 fileID、data: 是内联数据，都不是本地文件，直接跳过
 const deleteImageFile = (filePath) => {
   if (typeof filePath !== "string" || !filePath) {
+    return;
+  }
+  if (filePath.indexOf("cloud://") === 0 || filePath.indexOf("data:") === 0) {
     return;
   }
   try {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-26（Mini-V1 · 食谱库云同步上线）
+
+- 云函数 `recipeSync`（新部署至 cloud1-d5gx91rnaaa9f0be4）：按 recipeId 一条一档（文档 `_id`=食谱id，`recipes` 集合自动创建）做服务端双向合并。裁决规则：编辑冲突 updatedAt 新者胜（相同时间戳但客户端图片升级为 cloud fileID 时接受客户端）；删除落墓碑（deletedAt 钳制云端时间防时钟超前）；删除后另一端有更新编辑 → 编辑胜出回传恢复；删除后本地又编辑 → 复活；客户端图片上传失败的食谱不推内容（元数据仍在 live 里，云端不会误判“另一端新建”回传覆盖）；被替换旧成品图云文件顺手 deleteFile。纯合并逻辑在 `merge.js`（无 wx-server-sdk 依赖，可单测）。
+- 客户端 `utils/recipeSync.js` + `utils/domain/recipeSyncCore.js`（纯逻辑可单测）：触发点 = 登录成功立即同步 / 启动已登录静默拉取（onLaunch 防抖 800ms）/ 任意保存后 2.5s 防抖推送（`app.saveState({skipSyncSchedule})` 防同步回环）/ 我的页「立即同步」按钮。成品图 data URL → 本地落盘 → 上传云存储 `recipes/<openid>/<食谱id>.<ext>`（同名覆盖不累积）→ `recipe.image` 改存 cloud:// fileID（image 组件直接渲染，`deleteImageFile` 跳过 cloud://）；changed 按食谱有无变化增量推送（分批 50 条防请求超限）；应用云端结果时读取最新 state，请求期间本地又编辑的条目不动（下轮重裁决）；同步自身回写走 `skipSyncSchedule`。
+- 同步快照 `meal-planner-recipe-sync-v1`：`{openid, lastSyncAt, recipes:{id:updatedAt}, tombstones:{id:deletedAt}}`；换账号登录快照自动重置；墓碑本地保留 1 年/最多 500 条。无食谱变化时（如仅改菜单计划/采购清单）跳过网络请求。未登录/未开通云开发自动降级纯本地，行为与之前完全一致。
+- 我的页：登录布局新增「食谱云端同步」行（上次同步时间 + 立即同步按钮 + 状态文案）；登录成功自动同步并 toast「拉取 N · 推送 M」；未登录文案改为「登录后食谱自动同步到云端，换手机不丢食谱」；「导出」支持 cloud:// 成品图（下载临时文件读回 base64，失败保留 fileID 不阻断导出）。
+- 验证：逻辑单测 `scripts/test-recipe-sync.mjs` 54 项全过（拷 /tmp require CJS，仓库 ESM 根）；模拟器 E2E 10 项全过：清残留→登录自动同步（上次同步时间显示）→导入页新增「云同步测试菜」防抖自动上云（快照写入、版本一致）→清空本地 storage 模拟换机→重新登录食谱从云端拉回并渲染→手动同步「云端与本地已一致」→data URL 成品图同步后换 cloud:// fileID；删除传播墓碑路径实测（清理测试数据后云端在库 0/墓碑 12）。测试数据已清理干净。全量 node --check 与真机禁忌语法门禁通过。
+- 调试过程修复：`syncRecipes` 整条 Promise 链忘 `return`（块体箭头函数返回 undefined，链仍异步执行导致“快照写了但调用方拿到 undefined”），E2E 暴露后修复；automator 经验：同页 reLaunch 拿到旧页面句柄（先跳走再进目标页）、`mini.evaluate` 回调多行箭头函数会恒返 undefined（改单行）、wx:if 刚渲染按钮需「点击-验证-重试」。
+- 发布：云函数 recipeSync 已部署；**开发版本 1.2.0** 已上传（160.6 KB），待真机验证；提审/上线仍需 mp.weixin.qq.com 操作。菜单计划/采购清单暂不同步（后续轮次）。未改部署配置；未删除数据库。
+
 ## 2026-09-23 第四轮（Mini-V1 · 洁癖收尾 + 上传开发版 1.1.0）
 
 - 文档一致性：README「通过『导入中心』导入」改为「食谱库 → 右上角新增」（导入中心 tab 早已取消）并注明分享图入包；`docs/miniprogram-launch.md`「已实现」清单更新（解析能力/编辑页列表化/单食谱导入/页面分享）。

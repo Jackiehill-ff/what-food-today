@@ -1,0 +1,9 @@
+{
+  "name": "recipeSync",
+  "version": "1.0.0",
+  "description": "食谱库云同步（双向合并，last-write-wins + 删除墓碑）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

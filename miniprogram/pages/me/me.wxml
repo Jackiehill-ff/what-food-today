@@ -43,10 +43,20 @@
         />
         <button class="btn btn-ghost btn-sm logout-btn" bindtap="logout">退出登录</button>
       </view>
+      <view class="sync-row">
+        <view class="sync-meta">
+          <text class="sync-name">食谱云端同步</text>
+          <text class="sync-time">{{syncTimeText}}</text>
+        </view>
+        <button class="btn btn-ghost btn-sm sync-now-btn" bindtap="syncTap" disabled="{{syncBusy}}">
+          {{syncBusy ? '同步中…' : '立即同步'}}
+        </button>
+      </view>
+      <view class="panel-msg" wx:if="{{syncStatus}}">{{syncStatus}}</view>
     </block>
 
     <block wx:else>
-      <view class="muted">登录后可将账号与数据关联（当前数据仍保存在本机）。</view>
+      <view class="muted">登录后食谱自动同步到云端，换手机不丢食谱（未登录时数据仅保存在本机）。</view>
       <button class="btn btn-primary btn-block login-btn" bindtap="loginTap" disabled="{{busy}}">
         {{busy ? '登录中…' : '微信一键登录'}}
       </button>

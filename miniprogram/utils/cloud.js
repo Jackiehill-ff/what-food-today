@@ -32,4 +32,18 @@ const saveProfile = (profile) =>
     });
   });
 
-module.exports = { isCloudEnabled, login, saveProfile };
+// 下载云存储文件到本地临时路径（fileID → tempFilePath；导出云成品图时用）
+const downloadFile = (fileID) =>
+  new Promise((resolve, reject) => {
+    if (!isCloudEnabled()) {
+      reject(new Error("云开发未启用"));
+      return;
+    }
+    wx.cloud.downloadFile({
+      fileID,
+      success: (res) => resolve(res.tempFilePath),
+      fail: reject,
+    });
+  });
+
+module.exports = { isCloudEnabled, login, saveProfile, downloadFile };

@@ -2,7 +2,8 @@ const app = getApp();
 const { migrateAppState } = require("../../utils/storage");
 const { isDataUrl, readImageAsDataUrlAsync } = require("../../utils/images");
 const { getTodayKey } = require("../../utils/domain/mealPlan");
-const { login, saveProfile } = require("../../utils/cloud");
+const { login, saveProfile, downloadFile } = require("../../utils/cloud");
+const recipeSync = require("../../utils/recipeSync");
 const { createPageShare } = require("../../utils/share");
 
 const maskOpenid = (openid) => (openid ? `${openid.slice(0, 6)}****${openid.slice(-4)}` : "");
@@ -19,6 +20,9 @@ Page({
     avatarUrl: "",
     busy: false,
     accountMessage: "",
+    syncBusy: false,
+    syncStatus: "",
+    syncTimeText: "未同步",
     dataStatus: "",
     stats: { recipes: 0, planned: 0, shopping: 0 },
   },
@@ -29,6 +33,7 @@ Page({
     this.setData({
       isCloudEnabled,
       syncTagText: isCloudEnabled ? (app.globalData.user ? "已登录" : "未登录") : "本地模式",
+      syncTimeText: app.globalData.user ? recipeSync.getLastSyncText() : "未同步",
     });
     this.refreshStats();
   },
@@ -75,6 +80,20 @@ Page({
         this.applyUser(user);
         // 成功状态不额外显示文字，页面直接切换为已登录布局
         this.setData({ busy: false, accountMessage: "", syncTagText: "已登录" });
+        // 登录成功即把食谱库与云端做一次双向同步
+        recipeSync.syncRecipes().then((res) => {
+          this.refreshStats();
+          this.setData({ syncTimeText: recipeSync.getLastSyncText() });
+          if (res.ok && (res.pulled > 0 || res.pushed > 0)) {
+            wx.showToast({
+              title: `食谱已同步：拉取 ${res.pulled} · 推送 ${res.pushed}`,
+              icon: "none",
+              duration: 2500,
+            });
+          } else if (!res.ok && res.code !== "disabled" && res.code !== "busy") {
+            this.setData({ accountMessage: `食谱同步失败：${res.message || "请稍后重试"}` });
+          }
+        });
       })
       .catch((error) => {
         console.error("登录失败", error);
@@ -88,7 +107,48 @@ Page({
   logout() {
     app.clearUser();
     this.applyUser(null);
-    this.setData({ accountMessage: "", syncTagText: this.data.isCloudEnabled ? "未登录" : "本地模式" });
+    this.setData({
+      accountMessage: "",
+      syncStatus: "",
+      syncTimeText: "未同步",
+      syncTagText: this.data.isCloudEnabled ? "未登录" : "本地模式",
+    });
+  },
+
+  // 手动「立即同步」：拉取 + 推送一次食谱库
+  syncTap() {
+    if (this.data.syncBusy) {
+      return;
+    }
+    if (!this.data.user) {
+      this.setData({ syncStatus: "请先登录后再同步" });
+      return;
+    }
+    this.setData({ syncBusy: true, syncStatus: "正在同步…" });
+    recipeSync.syncRecipes().then((res) => {
+      this.setData({ syncBusy: false });
+      this.refreshStats();
+      this.setData({ syncTimeText: recipeSync.getLastSyncText() });
+      if (res.ok) {
+        const parts = [];
+        if (res.pulled) {
+          parts.push(`拉取 ${res.pulled}`);
+        }
+        if (res.pushed) {
+          parts.push(`推送 ${res.pushed}`);
+        }
+        if (res.removed) {
+          parts.push(`删除 ${res.removed}`);
+        }
+        this.setData({ syncStatus: parts.length ? `同步完成：${parts.join(" · ")}` : "云端与本地已一致" });
+        return;
+      }
+      if (res.code === "busy") {
+        this.setData({ syncStatus: "正在同步中，请稍候" });
+        return;
+      }
+      this.setData({ syncStatus: `同步失败：${res.message || "请检查网络后重试"}` });
+    });
   },
 
   onNicknameInput(e) {
@@ -159,12 +219,18 @@ Page({
   exportData() {
     const state = app.globalData.appState;
     this.setData({ dataStatus: "正在生成备份…" });
-    // 异步读回本地图片，避免阻塞 UI；图片随 JSON 一起导出，保证可跨设备导入
+    // 异步读回本地图片，避免阻塞 UI；图片随 JSON 一起导出，保证可跨设备导入。
+    // 云端成品图（cloud:// fileID）先下载到临时文件再读回 base64，下载失败保留原 fileID 不阻断导出
     const tasks = state.recipes.map((recipe) => {
-      if (recipe.image && !isDataUrl(recipe.image)) {
-        return readImageAsDataUrlAsync(recipe.image).then((image) => ({ ...recipe, image }));
+      if (!recipe.image || isDataUrl(recipe.image)) {
+        return Promise.resolve(recipe);
       }
-      return Promise.resolve(recipe);
+      if (recipe.image.indexOf("cloud://") === 0) {
+        return downloadFile(recipe.image)
+          .then((tempPath) => readImageAsDataUrlAsync(tempPath).then((image) => ({ ...recipe, image })))
+          .catch(() => recipe);
+      }
+      return readImageAsDataUrlAsync(recipe.image).then((image) => ({ ...recipe, image }));
     });
     Promise.all(tasks)
       .then((recipes) => {

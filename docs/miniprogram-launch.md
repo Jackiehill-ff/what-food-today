@@ -1,11 +1,11 @@
 # 微信小程序上线指南（Mini-V1）
 
-本目录下 `miniprogram/` 是基于主分支「今天吃啥？」APP 原生重写的微信小程序，`cloudfunctions/` 是微信一键登录与资料保存云函数（另有 `feedback` 已部署但客户端不再调用，反馈入口已取消，待定下线）。
+本目录下 `miniprogram/` 是基于主分支「今天吃啥？」APP 原生重写的微信小程序，`cloudfunctions/` 是微信一键登录、资料保存与食谱云同步云函数（另有 `feedback` 已部署但客户端不再调用，反馈入口已取消，待定下线）。
 
 - AppID：`wx603e02387ba0a6e0`
 - 平台：微信小程序（原生 WXML/WXSS/JS，未用跨端框架）
 - 登录：微信一键登录（微信云开发，`cloud.getWXContext().OPENID` 识别用户）
-- 数据：本地优先（`wx` storage），**不预置、不打包食谱**，用户通过「导入中心 / 数据→导入」自行导入
+- 数据：本地优先（`wx` storage），**不预置、不打包食谱**，用户通过「食谱库新增 / 数据→导入」自行导入；登录后食谱自动云同步（换手机不丢）
 
 ## 一、准备
 
@@ -24,8 +24,8 @@
 
 1. 在开发者工具顶部点「云开发」，首次需开通并创建一个环境（免费额度够个人用）。
 2. 记下环境 ID。若只有一个环境可跳过；若有多个，把 `miniprogram/utils/config.js` 里的 `CLOUD_ENV` 填成对应环境 ID。
-3. 在「云开发 → 数据库」新建集合 `users`（权限默认「仅创建者可读写」即可，云函数用服务端 SDK 不受影响）。
-4. 回到编辑器，在 `cloudfunctions/login` 和 `cloudfunctions/saveProfile` 目录上分别右键 → 「上传并部署：云端安装依赖」。
+3. 在「云开发 → 数据库」新建集合 `users`（权限默认「仅创建者可读写」即可，云函数用服务端 SDK 不受影响）。食谱同步用的 `recipes` 集合无需手建，`recipeSync` 云函数首次调用会自动创建。
+4. 回到编辑器，在 `cloudfunctions/login`、`cloudfunctions/saveProfile` 和 `cloudfunctions/recipeSync` 目录上分别右键 → 「上传并部署：云端安装依赖」（首次部署报「Creating 状态」等约 1 分钟重试即可）。
 
 > 说明：`login` 云函数通过 `cloud.getWXContext().OPENID` 直接拿到用户 openid，无需你在代码里处理 AppSecret；首次登录在 `users` 集合登记，之后更新 `lastLoginAt`。
 
@@ -56,5 +56,5 @@
 - 数据层：`miniprogram/utils/` 复刻主分支领域逻辑（食谱/菜单/采购/搜索/迁移）；`utils/storage.js` 保留 `meal-planner-app-v1` 数据键与迁移逻辑。
 - 图片落盘：小程序单个 storage key 上限约 1MB，成品图 base64 会超限，因此保存时把成品图写成本地文件（`utils/images.js`），storage 只存路径，导出时再读回 base64。
 - 已移除：OCR 图片识别（2026-09-06 取消，不接 ocr-plugin）、「创建备份」按钮、反馈入口（先云函数方案、后微信原生反馈，最终整体取消；`cloudfunctions/feedback` 仍在仓库与云端，客户端已不调用，确认后可下线）。
-- 尚未做（后续轮次）：云同步（登录已就绪，数据仍本地，云数据库 `users` 仅存账号资料）。
+- 云同步（2026-09-26 上线，仅食谱库）：云函数 `recipeSync` 服务端双向合并（编辑冲突按 updatedAt 新者胜、删除走墓碑、删除后更新编辑会复活）；客户端 `utils/recipeSync.js` 在登录成功/启动已登录/数据保存防抖 2.5s/手动「立即同步」时触发；成品图上传云存储 `recipes/<openid>/<食谱id>.<ext>` 后改存 cloud:// fileID；同步快照 `meal-planner-recipe-sync-v1`（换账号自动重置）；图片上传失败或无食谱变化时自动跳过，未登录/未开通云开发降级纯本地。菜单计划/采购清单同步尚未做（后续轮次）。
 - 部署配置（`.github/workflows/`）未改动；`recipes.json` 未打包进小程序。
