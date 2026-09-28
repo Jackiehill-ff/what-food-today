@@ -2,11 +2,12 @@
 
 ## 2026-09-28（Mini-V1 · 修复真机无法转发分享图/导出发送）
 
-- 根因（用户真机反馈「无法使用转发」，问微信 AI 得到 apiCategory 泛泛答案，非本案原因）：`wx.showShareImageMenu` / `wx.shareFileMessage` 属于微信强校验「必须在用户点击（TAP）的同步调用栈内调用」的接口。菜单计划「分享菜单 → 发给朋友」原实现是 tap 后先异步 `wx.canvasToTempFilePath` 再在回调里调 `showShareImageMenu`，真机上点击态已丢失必报 `fail can only be invoked by user TAP gesture`，被自身 fail 分支翻译成「当前环境不支持」toast；模拟器不严格校验手势，故 09-06 模拟器 E2E 未暴露。「我的 → 导出」的 `wx.shareFileMessage` 同款隐患（异步读图 + Promise.all 之后才调用），此前靠剪贴板兜底蒙混。
+- 根因（用户反馈「无法使用转发」，一轮先按分享菜单图排查、二轮澄清指页面转发——结论见末条；问微信 AI 得到 apiCategory 泛泛答案，非本案原因）：`wx.showShareImageMenu` / `wx.shareFileMessage` 属于微信强校验「必须在用户点击（TAP）的同步调用栈内调用」的接口。菜单计划「分享菜单 → 发给朋友」原实现是 tap 后先异步 `wx.canvasToTempFilePath` 再在回调里调 `showShareImageMenu`，真机上点击态已丢失必报 `fail can only be invoked by user TAP gesture`，被自身 fail 分支翻译成「当前环境不支持」toast；模拟器不严格校验手势，故 09-06 模拟器 E2E 未暴露。「我的 → 导出」的 `wx.shareFileMessage` 同款隐患（异步读图 + Promise.all 之后才调用），此前靠剪贴板兜底蒙混。
 - 修复 `pages/plan/plan.js`：`generateShare` 渲染画布后立即 `canvasToTempFilePath` 预生成临时文件缓存到 `this._shareTempFile`（失败 toast 并退回勾选步）；「保存到相册 / 发给朋友」改为点击时同步取缓存路径调用（未就绪提示「图片生成中」）；关闭弹窗/重新生成时失效缓存；删除不再使用的 `exportShareImage`。
 - 修复 `pages/me/me.js` + `me.wxml`：导出改两段式——「导出」异步生成备份文件后亮出「发送备份文件」按钮（`exportReady`，缓存 `exportFile` 路径与 `_exportJson`），用户点击时同步调 `wx.shareFileMessage`（不可用仍回退剪贴板）。
 - 验证（模拟器 E2E，weapp MCP + automator mockWxMethod）：分享菜单全流程（搜索加菜→勾选→生成预览画布→点「发给朋友」弹出系统图片菜单（发送给朋友/收藏/保存图片），无任何错误 toast）；`onShareAppMessage`/`onShareTimeline` 返回结构正确（页面右上角转发入口仍正常）；导出两段式状态机正确（备份生成→按钮亮起→点击走发送/剪贴板兜底，无崩溃）；全量 `node --check` 通过。真机待验证（手势校验是真实机行为）。
 - 测试数据清理：E2E 临时食谱「番茄炒蛋」经页面删除（modal 用 automator `mockWxMethod('showModal',{confirm:true})` 确认）→ 墓碑防抖同步上云，本地与云端均恢复 163 个食谱、菜单/采购清零。
+- 二轮排查「把小程序转发给别人」打不开：页面级转发代码无问题（六页 `onShareAppMessage`/`onShareTimeline` 均注册、全库无 `hideShareMenu`、模拟器实测回调结构正确）；根因是小程序从未发布正式版，开发版转发卡片仅项目成员/体验成员能打开（平台权限设计，非 bug）。解法：mp.weixin.qq.com 成员管理加体验成员或提审发布；已补进 `docs/miniprogram-launch.md` 发布节，未改代码。
 - 未改部署配置；未删除数据库。
 
 ## 2026-09-26（Mini-V1 · 食谱库云同步上线）

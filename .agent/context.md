@@ -19,11 +19,11 @@
 - 食谱云同步（2026-09-26）：云函数 `recipeSync` + 客户端 `utils/recipeSync.js`（纯逻辑 `utils/domain/recipeSyncCore.js`、服务端纯合并 `cloudfunctions/recipeSync/merge.js`，均无 wx 依赖可单测）。按 recipeId 一条一档双向合并，编辑冲突 updatedAt 新者胜、删除走墓碑（删除后更新编辑则复活）；快照 `meal-planner-recipe-sync-v1`（换 openid 重置）；触发 = 登录成功/启动已登录/保存后 2.5s 防抖（`app.saveState({skipSyncSchedule})` 防回环）/我的页「立即同步」；成品图上云存储后 `recipe.image` 存 cloud:// fileID（`deleteImageFile` 跳过 cloud://，导出时下载读回 base64）；changed 分批 50 条；无食谱变化跳过网络；图片上传失败不推内容防覆盖云端。仅同步食谱（菜单计划/采购清单本地，后续轮次）。automator 经验：同页 reLaunch 得旧页面句柄、evaluate 多行箭头回调恒返 undefined（须单行）、wx:if 新渲染按钮需点击-验证-重试。
 - 真机约束：JS 引擎不支持 ES2020+ 语法（`??`/`?.`、`flatMap`、`catch {}`），页面代码用显式 undefined 判断 / `reduce` / `catch (e)`。
 - WXSS 实测规律：原生 `button` 的 UA 固定宽 184px 会盖过单类名 `width`，覆盖需两级类名（如 `.profile-row .logout-btn`）或 WXML 内联样式。
-- 分享菜单：canvas type="2d" 必须放在可见弹窗内（离屏挂载真机不渲染、导出失败）；导出后用 `wx.showShareImageMenu`（`wx.shareImageMessage` 不存在）。
+- 分享菜单：canvas type="2d" 必须放在可见弹窗内（离屏挂载真机不渲染、导出失败）；导出后用 `wx.showShareImageMenu`（`wx.shareImageMessage` 不存在）。`showShareImageMenu`/`shareFileMessage` 等接口必须在用户点击的同步栈内调用（2026-09-28 修复：生成预览时预导出临时文件，点击时同步调用；「我的→导出」两段式先亮「发送备份文件」按钮；异步回调里调真机报 `can only be invoked by user TAP gesture`，模拟器测不出）。
 - 排序：菜单计划与采购清单均长按拖动；采购项可选 `order` 字段持久化手动顺序（从未拖过保持「分类 → 添加时间」，新项 `max+1` 接尾）。
 - 品牌：「计划有饭」（米饭的饭）；原生导航栏标题为空，各页自绘「图标 + 标题」页头。分享：全部页面经 `utils/share.js` 的 `createPageShare({ title, path, query })` mixin 注册 `onShareAppMessage`/`onShareTimeline`（页面必须定义这两个回调转发/朋友圈入口才可用），分享图为包内 `images/brand/app-icon.png`；朋友圈打开是微信「单页模式」。
 - 联调：开发者工具 CLI `cli auto --project <仓库根> --auto-port 9420` + miniprogram-automator；`switchTab` 会抛错、统一用 `reLaunch`；DevTools 重启会清模拟器 storage。
-- 发布状态：开发版本 **1.2.0**（2026-09-26 上传，160.6 KB，含食谱云同步）待真机验证；云函数 login/saveProfile/recipeSync 已部署 cloud1-d5gx91rnaaa9f0be4；提审/上线需到 mp.weixin.qq.com 操作。
+- 发布状态：开发版本 **1.2.0**（2026-09-26 上传，160.6 KB，含食谱云同步）待真机验证；云函数 login/saveProfile/recipeSync 已部署 cloud1-d5gx91rnaaa9f0be4；提审/上线需到 mp.weixin.qq.com 操作。从未发布正式版——开发版转发出去的卡片仅项目成员/体验成员能打开（「别人打不开转发」属平台权限设计，非 bug，加体验成员或提审发布解决）。2026-09-28 分享手势修复（971d6cc）已推送但未上传开发版，1.2.0 不含。
 
 ## 技术栈和命令
 
