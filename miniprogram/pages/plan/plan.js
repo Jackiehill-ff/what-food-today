@@ -314,6 +314,7 @@ Page({
   },
 
   closeShare() {
+    this._shareTempFile = "";
     this.setData({ shareStep: "" });
   },
 
@@ -335,6 +336,7 @@ Page({
     if (!items.length) {
       return;
     }
+    this._shareTempFile = "";
     // 画布放在可见的预览弹窗内（离屏/负偏移画布在真机上不渲染，导出会失败）
     this.setData({ shareStep: "preview" }, () => {
       wx.createSelectorQuery()
@@ -350,6 +352,18 @@ Page({
           }
           this._shareCanvas = info.node;
           this.renderShareCanvas(info.node, items, this.data.dayHeader);
+          // 生成预览时立即导出并缓存临时文件：保存/转发接口必须在用户点击的同步栈内调用，
+          // 点击后再异步 canvasToTempFilePath 会在真机上报 can only be invoked by user TAP gesture。
+          wx.canvasToTempFilePath({
+            canvas: this._shareCanvas,
+            success: (res) => {
+              this._shareTempFile = res.tempFilePath;
+            },
+            fail: () => {
+              this.showStatus("生成图片失败，请重试");
+              this.setData({ shareStep: "select" });
+            },
+          });
         });
     });
   },
@@ -438,35 +452,29 @@ Page({
     ctx.fillText(`共 ${items.length} 道菜 · 计划有饭`, W / 2, H - 52);
   },
 
-  exportShareImage(done) {
-    if (!this._shareCanvas) {
+  saveShareImage() {
+    if (!this._shareTempFile) {
+      this.showStatus("图片生成中，请稍候");
       return;
     }
-    wx.canvasToTempFilePath({
-      canvas: this._shareCanvas,
-      success: (res) => done(res.tempFilePath),
-      fail: () => this.showStatus("生成图片失败，请重试"),
-    });
-  },
-
-  saveShareImage() {
-    this.exportShareImage((filePath) => {
-      wx.saveImageToPhotosAlbum({
-        filePath,
-        success: () => this.showStatus("已保存到相册"),
-        fail: (error) =>
-          this.showStatus(error.errMsg && error.errMsg.includes("auth") ? "请在设置中允许保存图片" : "保存失败"),
-      });
+    wx.saveImageToPhotosAlbum({
+      filePath: this._shareTempFile,
+      success: () => this.showStatus("已保存到相册"),
+      fail: (error) =>
+        this.showStatus(error.errMsg && error.errMsg.includes("auth") ? "请在设置中允许保存图片" : "保存失败"),
     });
   },
 
   sendShareImage() {
-    this.exportShareImage((filePath) => {
-      wx.showShareImageMenu({
-        path: filePath,
-        success: () => {},
-        fail: () => this.showStatus("当前环境不支持，可保存图片后手动发送"),
-      });
+    if (!this._shareTempFile) {
+      this.showStatus("图片生成中，请稍候");
+      return;
+    }
+    // 必须同步调用并使用预生成路径：放进异步回调会丢失点击态，真机转发必失败
+    wx.showShareImageMenu({
+      path: this._shareTempFile,
+      success: () => {},
+      fail: () => this.showStatus("当前环境不支持，可保存图片后手动发送"),
     });
   },
 });

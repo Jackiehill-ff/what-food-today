@@ -2,6 +2,7 @@
 
 ## 当前分支：Mini-V1（微信小程序 + 账号登录）
 
+- [x] 修复真机无法转发（2026-09-28，模拟器实测）：根因是 `wx.showShareImageMenu`/`wx.shareFileMessage` 必须在用户点击的同步调用栈内调用，「分享菜单→发给朋友」原来在异步 `canvasToTempFilePath` 回调里才调 → 真机必报 `can only be invoked by user TAP gesture`（fail 分支误报「当前环境不支持」；模拟器不校验手势故未暴露）。修复：生成预览时即导出临时文件缓存 `_shareTempFile`，保存/转发点击时同步调用；「我的→导出」同款隐患改两段式（生成后亮「发送备份文件」按钮，点击同步 `shareFileMessage`，剪贴板兜底保留）。E2E：发给朋友弹出系统图片菜单零报错、页面双转发回调结构正确、导出状态机正确；测试食谱已删并墓碑同步（云端/本地回到 163）。真机待验证；含此修复的开发版未上传（需要时 `cli upload`）。
 - [x] 食谱库云同步（2026-09-26，模拟器 E2E 实测）：新增云函数 `recipeSync`（服务端双向合并，last-write-wins 按时间戳 + 删除墓碑 + 删除后编辑复活 + 客户端图片上传失败不覆盖云端）与客户端 `utils/recipeSync.js`（触发：登录成功/启动已登录拉取/保存后 2.5s 防抖/我的页「立即同步」；成品图本地路径上传云存储 `recipes/<openid>/<食谱id>.<ext>` 后改存 cloud:// fileID；changed 分批 50 条）。快照存 `meal-planner-recipe-sync-v1`（换 openid 自动重置；墓碑本地保留 1 年/500 条）；未登录/云不可用自动降级本地模式，无食谱变化时跳过网络。菜单计划/采购清单暂不同步（后续轮次）。E2E：登录自动同步→新增食谱防抖上云→清空本地换机重登拉回→手动同步→成品图 data URL 上云换 fileID，10 项全过 + 逻辑单测 54 项；测试数据已清（云端在库 0）。云函数已部署 cloud1-d5gx91rnaaa9f0be4；开发版本 **1.2.0** 已上传（160.6 KB），待真机验证。
 - [x] 洁癖收尾 + 上传云端（2026-09-23）：README/launch 文档过期说法修正（「导入中心」tab 已取消、解析能力描述更新）；最终门禁全过（全量 node --check、无真机禁忌语法、flomo 回归 145 草稿零垃圾）；**DevTools CLI 上传开发版本 1.1.0**（151.7 KB，含 2026-09-23 全部三轮修复），待真机验证；全部改动提交并推送 origin/Mini-V1。
 - [x] 修复小程序无法分享（2026-09-23 第三轮，模拟器实测）：根因是所有页面未定义 `onShareAppMessage`/`onShareTimeline`（转发入口不可用、朋友圈显示「当前不支持」）。新增 `utils/share.js` 的 `createPageShare` mixin + 品牌图标入包（`images/brand/app-icon.png`），六个页面全部接入；E2E 断言 5 页双回调结构全过。朋友圈打开为平台「单页模式」。

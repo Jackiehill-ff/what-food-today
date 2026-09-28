@@ -24,6 +24,7 @@ Page({
     syncStatus: "",
     syncTimeText: "未同步",
     dataStatus: "",
+    exportReady: false,
     stats: { recipes: 0, planned: 0, shopping: 0 },
   },
 
@@ -218,7 +219,7 @@ Page({
 
   exportData() {
     const state = app.globalData.appState;
-    this.setData({ dataStatus: "正在生成备份…" });
+    this.setData({ dataStatus: "正在生成备份…", exportReady: false });
     // 异步读回本地图片，避免阻塞 UI；图片随 JSON 一起导出，保证可跨设备导入。
     // 云端成品图（cloud:// fileID）先下载到临时文件再读回 base64，下载失败保留原 fileID 不阻断导出
     const tasks = state.recipes.map((recipe) => {
@@ -244,24 +245,39 @@ Page({
           this.setData({ dataStatus: "写入备份文件失败" });
           return;
         }
-        wx.shareFileMessage({
-          filePath,
-          fileName,
-          success: () => this.setData({ dataStatus: "已生成备份文件，请发送到聊天保存" }),
-          fail: () => {
-            // 分享文件不可用时回退到剪贴板（仅小数据可靠）
-            wx.setClipboardData({
-              data: json,
-              success: () => this.setData({ dataStatus: "已复制 JSON 到剪贴板（数据较大时可能不完整）" }),
-              fail: () => this.setData({ dataStatus: "导出失败" }),
-            });
-          },
+        // shareFileMessage 必须在用户点击的同步栈内调用，异步生成文件后直接拉起会报
+        // can only be invoked by user TAP gesture；先缓存文件亮出「发送」按钮，等下一次点击同步调用。
+        this._exportJson = json;
+        this.setData({
+          dataStatus: "备份已生成，点击「发送备份文件」选择聊天",
+          exportFile: { path: filePath, name: fileName },
+          exportReady: true,
         });
       })
       .catch((error) => {
         console.error("导出失败", error);
         this.setData({ dataStatus: "导出失败：读取图片出错" });
       });
+  },
+
+  sendExportFile() {
+    const file = this.data.exportFile;
+    if (!file) {
+      return;
+    }
+    wx.shareFileMessage({
+      filePath: file.path,
+      fileName: file.name,
+      success: () => this.setData({ dataStatus: "已发送到聊天" }),
+      fail: () => {
+        // 分享文件不可用时回退到剪贴板（仅小数据可靠）
+        wx.setClipboardData({
+          data: this._exportJson || "",
+          success: () => this.setData({ dataStatus: "已复制 JSON 到剪贴板（数据较大时可能不完整）" }),
+          fail: () => this.setData({ dataStatus: "导出失败" }),
+        });
+      },
+    });
   },
 
   importData() {

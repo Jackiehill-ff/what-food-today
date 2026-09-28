@@ -74,6 +74,7 @@
     <view class="row-actions">
       <button class="btn btn-ghost" bindtap="exportData">导出</button>
       <button class="btn btn-ghost" bindtap="importData">导入</button>
+      <button class="btn btn-primary" wx:if="{{exportReady}}" bindtap="sendExportFile">发送备份文件</button>
     </view>
     <view class="panel-msg" wx:if="{{dataStatus}}">{{dataStatus}}</view>
   </view>

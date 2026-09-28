@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-28（Mini-V1 · 修复真机无法转发分享图/导出发送）
+
+- 根因（用户真机反馈「无法使用转发」，问微信 AI 得到 apiCategory 泛泛答案，非本案原因）：`wx.showShareImageMenu` / `wx.shareFileMessage` 属于微信强校验「必须在用户点击（TAP）的同步调用栈内调用」的接口。菜单计划「分享菜单 → 发给朋友」原实现是 tap 后先异步 `wx.canvasToTempFilePath` 再在回调里调 `showShareImageMenu`，真机上点击态已丢失必报 `fail can only be invoked by user TAP gesture`，被自身 fail 分支翻译成「当前环境不支持」toast；模拟器不严格校验手势，故 09-06 模拟器 E2E 未暴露。「我的 → 导出」的 `wx.shareFileMessage` 同款隐患（异步读图 + Promise.all 之后才调用），此前靠剪贴板兜底蒙混。
+- 修复 `pages/plan/plan.js`：`generateShare` 渲染画布后立即 `canvasToTempFilePath` 预生成临时文件缓存到 `this._shareTempFile`（失败 toast 并退回勾选步）；「保存到相册 / 发给朋友」改为点击时同步取缓存路径调用（未就绪提示「图片生成中」）；关闭弹窗/重新生成时失效缓存；删除不再使用的 `exportShareImage`。
+- 修复 `pages/me/me.js` + `me.wxml`：导出改两段式——「导出」异步生成备份文件后亮出「发送备份文件」按钮（`exportReady`，缓存 `exportFile` 路径与 `_exportJson`），用户点击时同步调 `wx.shareFileMessage`（不可用仍回退剪贴板）。
+- 验证（模拟器 E2E，weapp MCP + automator mockWxMethod）：分享菜单全流程（搜索加菜→勾选→生成预览画布→点「发给朋友」弹出系统图片菜单（发送给朋友/收藏/保存图片），无任何错误 toast）；`onShareAppMessage`/`onShareTimeline` 返回结构正确（页面右上角转发入口仍正常）；导出两段式状态机正确（备份生成→按钮亮起→点击走发送/剪贴板兜底，无崩溃）；全量 `node --check` 通过。真机待验证（手势校验是真实机行为）。
+- 测试数据清理：E2E 临时食谱「番茄炒蛋」经页面删除（modal 用 automator `mockWxMethod('showModal',{confirm:true})` 确认）→ 墓碑防抖同步上云，本地与云端均恢复 163 个食谱、菜单/采购清零。
+- 未改部署配置；未删除数据库。
+
 ## 2026-09-26（Mini-V1 · 食谱库云同步上线）
 
 - 云函数 `recipeSync`（新部署至 cloud1-d5gx91rnaaa9f0be4）：按 recipeId 一条一档（文档 `_id`=食谱id，`recipes` 集合自动创建）做服务端双向合并。裁决规则：编辑冲突 updatedAt 新者胜（相同时间戳但客户端图片升级为 cloud fileID 时接受客户端）；删除落墓碑（deletedAt 钳制云端时间防时钟超前）；删除后另一端有更新编辑 → 编辑胜出回传恢复；删除后本地又编辑 → 复活；客户端图片上传失败的食谱不推内容（元数据仍在 live 里，云端不会误判“另一端新建”回传覆盖）；被替换旧成品图云文件顺手 deleteFile。纯合并逻辑在 `merge.js`（无 wx-server-sdk 依赖，可单测）。
