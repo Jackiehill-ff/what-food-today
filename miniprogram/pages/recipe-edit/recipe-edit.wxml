@@ -19,7 +19,7 @@
     </view>
     <view class="field">
       <text class="field-label">分类</text>
-      <input class="input" value="{{draft.category}}" data-field="category" bindinput="onFieldInput" placeholder="家常菜" />
+      <input class="input" value="{{draft.category}}" data-field="category" bindinput="onFieldInput" placeholder="" />
     </view>
   </view>
 

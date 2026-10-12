@@ -97,5 +97,5 @@
     </view>
   </view>
 
-  <button class="btn btn-primary btn-block save-btn" wx:if="{{drafts.length > 0}}" bindtap="save">保存全部食谱</button>
+  <button class="btn btn-primary btn-block save-btn" wx:if="{{drafts.length > 0}}" bindtap="save">保存食谱</button>
 </view>
