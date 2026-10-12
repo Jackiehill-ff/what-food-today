@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-12（Mini-V1 · 备菜弹窗排序 + 编辑页跨区拖动改分类 + 备注改名）
+
+- 备菜（食材勾选）弹窗排序：`components/ingredient-popup` 打开时改为「食材在前、调味料在后，各自保持食谱内原有顺序」的稳定分组（filter+concat，不依赖 sort 稳定性）；此前按 `recipe.ingredients` 原始顺序渲染，导入解析产物的食材/调味料在底层交错时会混排。菜单计划/食谱库两处入口共用该组件，一并生效；确认加入采购清单的顺序与显示顺序一致。
+- 编辑页食材/调味料跨区拖动（此前只能各自分区内排序，分类错置须删除重加）：
+  - `onRowLongPress` 同时测量两分区行矩形与分区容器（`.section-food`/`.section-seasoning` 新增类名），空分区也有容器可承接；
+  - `onRowTouchMove` 按分区容器纵向范围「就近归属」判定悬停分区——拖进另一分区范围即切换目标（跨界轻震动反馈），原分区收拢空位、目标分区自插入点整体让位（数据结构由单份 `dragShifts` 拆为 `foodShifts`/`seasoningShifts`，WXML 行偏移绑定同步改）；
+  - 松手 `moveItemAcrossSections` 写回：分类切换为目标分区类别，按目标分区可见项锚点插入（`insertSlotAt` 按行中心计数），目标类别为空时按「食材在前、调味料在后」落位；同分区排序路径 `reorderSection` 原样保留；
+  - 守卫放宽：本分区仅 1 行但另一分区有行时也允许长按（为跨区移动），两分区合计不足 2 行仍禁止。
+- 编辑页「原始文本 / 备注」标签改为「备注」（字段仍为 `rawText`，导入页的「原始文本」展示不动）。
+- 验证：全量 `node --check` + 无真机禁忌语法；**无头逻辑测试 11/11 通过**（stub `wx`/`Page`/`Component` 直接 require 真实源码驱动：弹窗排序与确认顺序、跨区 food→seasoning 中位插入、seasoning→food 顶部插入、拖进空分区、同区排序回归、三组守卫、底层写回完整性）；DevTools（2.02.2608060）重启用 `cli auto` 打开项目编译通过、模拟器正常渲染。**模拟器 E2E 未能执行**——该版本 DevTools automator 通道全面超时（MCP 与 miniprogram-automator 直连均死、System Events 也超时，环境级故障非代码问题），跨区拖动的真机/模拟器手感（震动、让位动画）待人工验证。
+- 未改部署配置；未删除数据库。
+
 ## 2026-09-28（Mini-V1 · 修复真机无法转发分享图/导出发送）
 
 - 根因（用户反馈「无法使用转发」，一轮先按分享菜单图排查、二轮澄清指页面转发——结论见末条；问微信 AI 得到 apiCategory 泛泛答案，非本案原因）：`wx.showShareImageMenu` / `wx.shareFileMessage` 属于微信强校验「必须在用户点击（TAP）的同步调用栈内调用」的接口。菜单计划「分享菜单 → 发给朋友」原实现是 tap 后先异步 `wx.canvasToTempFilePath` 再在回调里调 `showShareImageMenu`，真机上点击态已丢失必报 `fail can only be invoked by user TAP gesture`，被自身 fail 分支翻译成「当前环境不支持」toast；模拟器不严格校验手势，故 09-06 模拟器 E2E 未暴露。「我的 → 导出」的 `wx.shareFileMessage` 同款隐患（异步读图 + Promise.all 之后才调用），此前靠剪贴板兜底蒙混。

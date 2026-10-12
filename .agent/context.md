@@ -11,9 +11,9 @@
 
 ## Mini-V1 小程序（当前分支）
 
-- 结构：4 个 tab 页（`pages/plan|recipes|shopping|me`）+ `pages/recipe-edit`（编辑已有食谱）+ `pages/import`（新增食谱：粘贴文本解析，**单食谱导入**——解析出多个草稿只取第一个并提示）；共享组件 `components/ingredient-popup`（加入菜单时的食材勾选弹窗，按食谱 ingredients 原始顺序渲染）。
+- 结构：4 个 tab 页（`pages/plan|recipes|shopping|me`）+ `pages/recipe-edit`（编辑已有食谱）+ `pages/import`（新增食谱：粘贴文本解析，**单食谱导入**——解析出多个草稿只取第一个并提示）；共享组件 `components/ingredient-popup`（加入菜单时的食材勾选弹窗，食材在前、调味料在后，各自保持食谱内顺序）。
 - 导入解析（`utils/domain/importParser.js`，2026-09-23 重写为「先分块再解析」）：整段先按【n】序号、「菜谱一/二」前缀、①②③子菜谱标题（①行且下一行是小节头才切）、空行切块，首行不像标题的续块并回前块，再按块内有无食材头走「标签解析」或「纯文本兜底」。小节头支持 `食材（2人份）`、无冒号 `做法`/`调味料`、`【做法步骤】`、`小贴士/关键提醒` 备注头与无冒号子节（`纯素酱汁`，需下一行像「名称 数量」）；分量支持分数（½茶匙）、区间（1-2大勺）、括号备注整体保留（`300克（黄心，去皮切块）`）；「名（配料列表）」行展开成多项；散文/说明小节跳过。全角「＋」分隔、「名称:用量」行、flomo 噪音行（链接/时间戳/#标签/分隔线）防护；「或」并列名（苹果醋或柠檬汁）全在调味料名单才归调味料。改动需跑 flomo 全量回归（`scripts/flomo-export-2026-09-01.txt`，基准：145 草稿/零垃圾/旧 124 标题剥①后零缺失）。textarea 必须显式 `maxlength="-1"`（默认 140 会截断长文本）。
-- 编辑食谱页交互：食材/调味料为列表（名称+数量，数量为空不显示），点行或「编辑」弹单项编辑框（仅名称/数量，删除在弹窗右上角，无单位/分类栏，数量占位「无」）；列表支持长按拖动排序（类别内，与菜单计划/采购清单同交互）；菜单计划卡片展开按钮为裸向下箭头（与食谱库一致）。
+- 编辑食谱页交互：食材/调味料为列表（名称+数量，数量为空不显示），点行或「编辑」弹单项编辑框（仅名称/数量，删除在弹窗右上角，无单位/分类栏，数量占位「无」）；列表支持长按拖动排序（同分区排序 + 跨分区拖动改分类：按分区容器纵向范围就近判定悬停分区，松手切换 category 并按目标分区可见项锚点插入，与菜单计划/采购清单同款让位交互）；菜单计划卡片展开按钮为裸向下箭头（与食谱库一致）。
 - 领域层：`utils/domain/`（recipes/mealPlan/shopping/importParser）复刻 `src/domain/` 逻辑；`utils/storage.js` 沿用 `meal-planner-app-v1` 数据键与迁移；成品图写本地文件（`utils/images.js`，storage 单 key 上限约 1MB，只存路径）。
 - 登录：云函数 `login`/`saveProfile`（云开发环境 cloud1-d5gx91rnaaa9f0be4，环境 ID 在 `utils/config.js` 的 `CLOUD_ENV`）；未开通云开发自动降级本地模式。`cloudfunctions/feedback` 已部署但客户端不再调用（反馈入口已取消，待定下线）。
 - 食谱云同步（2026-09-26）：云函数 `recipeSync` + 客户端 `utils/recipeSync.js`（纯逻辑 `utils/domain/recipeSyncCore.js`、服务端纯合并 `cloudfunctions/recipeSync/merge.js`，均无 wx 依赖可单测）。按 recipeId 一条一档双向合并，编辑冲突 updatedAt 新者胜、删除走墓碑（删除后更新编辑则复活）；快照 `meal-planner-recipe-sync-v1`（换 openid 重置）；触发 = 登录成功/启动已登录/保存后 2.5s 防抖（`app.saveState({skipSyncSchedule})` 防回环）/我的页「立即同步」；成品图上云存储后 `recipe.image` 存 cloud:// fileID（`deleteImageFile` 跳过 cloud://，导出时下载读回 base64）；changed 分批 50 条；无食谱变化跳过网络；图片上传失败不推内容防覆盖云端。仅同步食谱（菜单计划/采购清单本地，后续轮次）。automator 经验：同页 reLaunch 得旧页面句柄、evaluate 多行箭头回调恒返 undefined（须单行）、wx:if 新渲染按钮需点击-验证-重试。

@@ -26,11 +26,12 @@ Page({
     categories: CATEGORIES,
     // 逐项编辑弹窗：{ section: 'food'|'seasoning', id, name, amount, isNew }
     editing: null,
-    // 列表长按拖动排序状态（dragSection: 'food'|'seasoning'）
+    // 列表长按拖动排序状态（dragSection: 'food'|'seasoning' 为拖动来源分区，两分区各存一份让位偏移）
     dragSection: "",
     dragIndex: -1,
     dragOffset: 0,
-    dragShifts: [],
+    foodShifts: [],
+    seasoningShifts: [],
   },
 
   onLoad(options) {
@@ -208,31 +209,73 @@ Page({
     this.setIngredients(ingredients);
   },
 
-  // ---- 列表长按拖动排序（同一类别内，交互与菜单计划/采购清单一致） ----
+  // ---- 列表长按拖动排序（同分区排序 + 跨分区拖动改分类，交互与菜单计划/采购清单一致） ----
   onRowLongPress(e) {
     const { section, index } = e.currentTarget.dataset;
     const rows = this.data[section];
-    if (!rows || rows.length < 2 || this.data.editing) {
+    const other = section === "food" ? "seasoning" : "food";
+    if (!rows || !rows.length || this.data.editing) {
+      return;
+    }
+    // 本分区只有一行且另一分区也没有行时，拖动不可能产生任何变化
+    if (rows.length + (this.data[other] || []).length < 2) {
       return;
     }
     const touch = e.touches && e.touches[0];
     if (!touch) {
       return;
     }
-    const selector = section === "food" ? ".food-row" : ".seasoning-row";
+    // 两分区的行 + 分区容器都量下来：行用于算槽位，容器用于判断拖到哪个分区（空分区也能承接）
     wx.createSelectorQuery()
       .in(this)
-      .selectAll(selector)
-      .boundingClientRect((rects) => {
-        if (!rects || rects.length !== rows.length) {
+      .selectAll(".food-row")
+      .boundingClientRect()
+      .selectAll(".seasoning-row")
+      .boundingClientRect()
+      .select(".section-food")
+      .boundingClientRect()
+      .select(".section-seasoning")
+      .boundingClientRect()
+      .exec((res) => {
+        const foodRects = res[0];
+        const seasoningRects = res[1];
+        const foodSection = res[2];
+        const seasoningSection = res[3];
+        if (
+          !foodRects ||
+          !seasoningRects ||
+          !foodSection ||
+          !seasoningSection ||
+          foodRects.length !== this.data.food.length ||
+          seasoningRects.length !== this.data.seasoning.length
+        ) {
           return;
         }
-        this._dragRects = rects;
+        this._dragRects = { food: foodRects, seasoning: seasoningRects };
+        this._dragSections = { food: foodSection, seasoning: seasoningSection };
         this._dragStartY = touch.clientY;
-        this.setData({ dragSection: section, dragIndex: index, dragOffset: 0, dragShifts: rects.map(() => 0) });
+        this._dragTarget = undefined;
+        this._dragHover = section;
+        this.setData({
+          dragSection: section,
+          dragIndex: index,
+          dragOffset: 0,
+          foodShifts: foodRects.map(() => 0),
+          seasoningShifts: seasoningRects.map(() => 0),
+        });
         wx.vibrateShort({ type: "medium", fail: () => {} });
-      })
-      .exec();
+      });
+  },
+
+  // y 到矩形纵向范围的距离（落在范围内为 0）
+  distanceToRect(rect, y) {
+    if (y < rect.top) {
+      return rect.top - y;
+    }
+    if (y > rect.bottom) {
+      return y - rect.bottom;
+    }
+    return 0;
   },
 
   onRowTouchMove(e) {
@@ -247,21 +290,61 @@ Page({
     }
     const dy = touch.clientY - this._dragStartY;
     const rects = this._dragRects;
-    const heights = rects.map((rect) => rect.height);
-    const gaps = rects.slice(1).map((rect, i) => rect.top - (rects[i].top + heights[i]));
-    const draggedCenter = rects[dragIndex].top + heights[dragIndex] / 2 + dy;
-    // 计算拖动项当前落在哪个槽位
+    const own = rects[dragSection];
+    const draggedHeight = own[dragIndex].height;
+    const draggedCenter = own[dragIndex].top + draggedHeight / 2 + dy;
+
+    // 悬停分区：按两分区容器的纵向范围就近判断，拖进另一分区范围即切换目标
+    const other = dragSection === "food" ? "seasoning" : "food";
+    const sections = this._dragSections;
+    const targetSection =
+      this.distanceToRect(sections[other], draggedCenter) < this.distanceToRect(sections[dragSection], draggedCenter)
+        ? other
+        : dragSection;
+
+    let targetIndex;
+    let foodShifts;
+    let seasoningShifts;
+    if (targetSection === dragSection) {
+      // 同分区：拖动项 1:1 跟手，兄弟项按拖动项占位高度让位
+      targetIndex = this.nearestSlot(own, draggedCenter, dragIndex);
+      const shifts = this.sameSectionShifts(own, dragIndex, targetIndex);
+      foodShifts = dragSection === "food" ? shifts : rects.food.map(() => 0);
+      seasoningShifts = dragSection === "seasoning" ? shifts : rects.seasoning.map(() => 0);
+    } else {
+      // 跨分区：原分区收拢拖动项空出的位置，目标分区从插入点起整体让位
+      targetIndex = this.insertSlotAt(rects[targetSection], draggedCenter);
+      const shifts = this.crossSectionShifts(own, dragIndex, rects[targetSection], targetIndex);
+      foodShifts = dragSection === "food" ? shifts.source : shifts.target;
+      seasoningShifts = dragSection === "seasoning" ? shifts.source : shifts.target;
+    }
+    this._dragTarget = { section: targetSection, index: targetIndex };
+    if (targetSection !== this._dragHover) {
+      this._dragHover = targetSection;
+      wx.vibrateShort({ type: "light", fail: () => {} });
+    }
+    this.setData({ dragOffset: dy, foodShifts, seasoningShifts });
+  },
+
+  // 同分区：拖动项中心最靠近的槽位
+  nearestSlot(rects, draggedCenter, dragIndex) {
     let target = dragIndex;
     for (let i = 0; i < rects.length; i += 1) {
-      const center = rects[i].top + heights[i] / 2;
-      if (Math.abs(draggedCenter - center) < Math.abs(draggedCenter - (rects[target].top + heights[target] / 2))) {
+      const center = rects[i].top + rects[i].height / 2;
+      if (Math.abs(draggedCenter - center) < Math.abs(draggedCenter - (rects[target].top + rects[target].height / 2))) {
         target = i;
       }
     }
-    // 拖动项 1:1 跟手；兄弟项按拖动项自身占位高度（高度+相邻间隙）整体让位
+    return target;
+  },
+
+  // 同分区让位：兄弟项按拖动项自身占位高度（高度+相邻间隙）整体平移
+  sameSectionShifts(rects, dragIndex, target) {
+    const heights = rects.map((rect) => rect.height);
+    const gaps = rects.slice(1).map((rect, i) => rect.top - (rects[i].top + heights[i]));
     const gapAfter = gaps[dragIndex] != null ? gaps[dragIndex] : gaps[dragIndex - 1] || 0;
     const span = heights[dragIndex] + gapAfter;
-    const dragShifts = rects.map((rect, i) => {
+    return rects.map((rect, i) => {
       if (i === dragIndex) {
         return 0;
       }
@@ -273,8 +356,29 @@ Page({
       }
       return 0;
     });
-    this._dragTarget = target;
-    this.setData({ dragOffset: dy, dragShifts });
+  },
+
+  // 跨分区插入点：中心落在目标分区第几个行中心之前，就插到第几个位置
+  insertSlotAt(rects, draggedCenter) {
+    let count = 0;
+    rects.forEach((rect) => {
+      if (rect.top + rect.height / 2 < draggedCenter) {
+        count += 1;
+      }
+    });
+    return count;
+  },
+
+  // 跨分区让位：原分区收拢空位（上移），目标分区自插入点起下移让位；行样式两分区一致，占位高度沿用拖动行的
+  crossSectionShifts(sourceRects, dragIndex, targetRects, insertIndex) {
+    const heights = sourceRects.map((rect) => rect.height);
+    const gaps = sourceRects.slice(1).map((rect, i) => rect.top - (sourceRects[i].top + heights[i]));
+    const gapAfter = gaps[dragIndex] != null ? gaps[dragIndex] : gaps[dragIndex - 1] || 0;
+    const span = heights[dragIndex] + gapAfter;
+    return {
+      source: sourceRects.map((rect, i) => (i > dragIndex ? -span : 0)),
+      target: targetRects.map((rect, i) => (i >= insertIndex ? span : 0)),
+    };
   },
 
   onRowTouchEnd() {
@@ -284,11 +388,16 @@ Page({
     }
     const target = this._dragTarget;
     this._dragTarget = undefined;
-    this.setData({ dragSection: "", dragIndex: -1, dragOffset: 0, dragShifts: [] });
-    if (target === undefined || target === dragIndex) {
+    this._dragHover = undefined;
+    this.setData({ dragSection: "", dragIndex: -1, dragOffset: 0, foodShifts: [], seasoningShifts: [] });
+    if (!target || (target.section === dragSection && target.index === dragIndex)) {
       return;
     }
-    this.reorderSection(dragSection, dragIndex, target);
+    if (target.section === dragSection) {
+      this.reorderSection(dragSection, dragIndex, target.index);
+    } else {
+      this.moveItemAcrossSections(dragSection, dragIndex, target.section, target.index);
+    }
     wx.vibrateShort({ type: "light", fail: () => {} });
   },
 
@@ -311,6 +420,38 @@ Page({
       }
       return draft.ingredients.filter((entry) => entry.id === nextId)[0] || item;
     });
+    this.setIngredients(ingredients);
+  },
+
+  // 跨分区拖动落位：分类随之切换，插到目标分区第 to 个可见项的位置
+  moveItemAcrossSections(sourceSection, from, targetSection, to) {
+    const targetCategory = targetSection === "food" ? "食材" : "调味料";
+    const draft = this.data.draft;
+    const movedId = this.data[sourceSection][from].id;
+    const current = this.findItem(movedId);
+    if (!current) {
+      return;
+    }
+    const moved = { ...current, category: targetCategory };
+    const ingredients = draft.ingredients.filter((item) => item.id !== movedId);
+    const anchorId = this.data[targetSection].map((item) => item.id)[to];
+    let insertAt = -1;
+    if (anchorId) {
+      insertAt = ingredients.findIndex((item) => item.id === anchorId);
+    } else {
+      // 目标分区末尾：插到该类别最后一项之后；该类别为空时按「食材在前、调味料在后」落位
+      let lastIdx = -1;
+      ingredients.forEach((item, i) => {
+        if (item.category === targetCategory) {
+          lastIdx = i;
+        }
+      });
+      insertAt = lastIdx === -1 ? (targetCategory === "食材" ? 0 : ingredients.length) : lastIdx + 1;
+    }
+    if (insertAt < 0) {
+      insertAt = ingredients.length;
+    }
+    ingredients.splice(insertAt, 0, moved);
     this.setIngredients(ingredients);
   },
 

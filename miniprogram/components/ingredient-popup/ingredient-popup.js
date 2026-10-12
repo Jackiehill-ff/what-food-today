@@ -14,7 +14,12 @@ Component({
   observers: {
     "visible, recipe": function (visible, recipe) {
       if (visible) {
-        const items = (recipe.items || []).map((item) => ({ ...item, checked: false }));
+        // 食材在前、调味料在后，各自保持食谱内原有顺序（与编辑页分区一致）
+        const raw = recipe.items || [];
+        const items = raw
+          .filter((item) => item.category !== "调味料")
+          .concat(raw.filter((item) => item.category === "调味料"))
+          .map((item) => ({ ...item, checked: false }));
         this.setData(this.decorate(items));
       }
     },
