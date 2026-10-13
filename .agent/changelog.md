@@ -7,7 +7,7 @@
 - `docs/visual-spec-v2.md` 头部状态修正：「提案待评审后替换 v1」→ 2026-09-06 已评审通过并落地 Mini-V1（token 在 `miniprogram/app.wxss`，v1 已于 09-18 删除，本页现役权威；app-v1 的 `src/styles.css` 未跟进）。
 - 工作区审计：旧指引文案「食谱文本需包含」全库零残留；`.workbuddy/`、`.npm-cache/` 为 .gitignore 显式声明的本地目录（有意保留，未动）；用户级 `~/.codex/AGENTS.md` 为通用行为准则，与仓库 AGENTS.md 无矛盾死引用；本会话 /tmp 验证目录已不存在。
 - **删除候选（待用户确认，未动）**：`~/.codex/worktrees/dfde9095-…/今天吃啥？` Codex 残留 worktree——指向 a3d4753（2026-06 合并提交，Mini-V1/main 祖先）、工作区干净、无独有改动，`git worktree remove` 即清。
-- **清场执行（用户确认后，同日）**：`git worktree remove` 因元数据错位报 validation failed——该目录 `.git` 实际回指旧仓库 `~/Documents/Codex/今天吃啥？`（现存，HEAD e23566f），本仓库 `.git/worktrees` 注册是搬仓时带来的陈旧记录。改用「rm 目录 + 本仓库 `git worktree prune`」清理（删前复核：clean、a3d4753 祖先、无独有改动）；清后 `git worktree list` 仅剩主 checkout。只读观察（未动，超本仓库范围）：`~/Documents/Codex/今天吃啥？` 现存但已非现役仓库；`~/.codex/worktrees/` 另有 5 个 UUID 目录——2 个空、3 个含「今天吃啥？」的**无 git 纯目录快照**（非仓库，无法用 git 判断独有内容），是否清理由用户另行决定。
+- **清场执行（用户确认后，同日）**：`git worktree remove` 因元数据错位报 validation failed——该目录 `.git` 实际回指旧仓库 `~/Documents/Codex/今天吃啥？`（现存，HEAD e23566f），本仓库 `.git/worktrees` 注册是搬仓时带来的陈旧记录。改用「rm 目录 + 本仓库 `git worktree prune`」清理（删前复核：clean、a3d4753 祖先、无独有改动）；清后 `git worktree list` 仅剩主 checkout。`~/.codex/worktrees/` 下另 5 个 UUID 目录经用户二次确认后一并清理：删前逐文件 blob 哈希对全库历史比对——2 个空、3 个各仅含 2 个 `.vite/deps/` 缓存元文件（Vite 开发缓存，自动生成从未入库），零源码内容，全删；`worktrees/` 目录本身已空并移除。范围外未动：`~/Documents/Codex/今天吃啥？` 旧仓库（是否归档/删除由用户另行决定）。
 - 门禁：`cli auto` 编译校验通过（✔ auto）；解析器未动，flomo 回归不触发。运行态复核为记录态：开发版 1.2.0 与三个云函数的线上状态需 mp.weixin.qq.com / 云开发控制台人工核对（本分支无部署动作）。
 - 未改部署配置；未删除数据库。
 
