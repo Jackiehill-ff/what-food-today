@@ -7,10 +7,11 @@
   </view>
 
   <view class="hint hint-lines">
-    <text>食谱文本需包含：</text>
-    <text>· 菜名</text>
-    <text>· 食材：名称 + 分量</text>
-    <text>· 做法：每行一步</text>
+    <text>食谱文本解析要求：</text>
+    <text>①第一行写菜名</text>
+    <text>②「食材：」单独一行，下面每行一项：名称 + 分量</text>
+    <text>③「调味料：」可选，另起一行，写法同上</text>
+    <text>④「做法：」下面每行一步，用 1. 2. 3. 编号</text>
   </view>
 
   <textarea

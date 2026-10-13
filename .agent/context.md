@@ -22,8 +22,8 @@
 - 分享菜单：canvas type="2d" 必须放在可见弹窗内（离屏挂载真机不渲染、导出失败）；导出后用 `wx.showShareImageMenu`（`wx.shareImageMessage` 不存在）。`showShareImageMenu`/`shareFileMessage` 等接口必须在用户点击的同步栈内调用（2026-09-28 修复：生成预览时预导出临时文件，点击时同步调用；「我的→导出」两段式先亮「发送备份文件」按钮；异步回调里调真机报 `can only be invoked by user TAP gesture`，模拟器测不出）。
 - 排序：菜单计划与采购清单均长按拖动；采购项可选 `order` 字段持久化手动顺序（从未拖过保持「分类 → 添加时间」，新项 `max+1` 接尾）。
 - 品牌：「计划有饭」（米饭的饭）；原生导航栏标题为空，各页自绘「图标 + 标题」页头。分享：全部页面经 `utils/share.js` 的 `createPageShare({ title, path, query })` mixin 注册 `onShareAppMessage`/`onShareTimeline`（页面必须定义这两个回调转发/朋友圈入口才可用），分享图为包内 `images/brand/app-icon.png`；朋友圈打开是微信「单页模式」。
-- 联调：开发者工具 CLI `cli auto --project <仓库根> --auto-port 9420` + miniprogram-automator；`switchTab` 会抛错、统一用 `reLaunch`；DevTools 重启会清模拟器 storage。
-- 发布状态：开发版本 **1.2.0**（2026-09-26 上传，160.6 KB，含食谱云同步）待真机验证；云函数 login/saveProfile/recipeSync 已部署 cloud1-d5gx91rnaaa9f0be4；提审/上线需到 mp.weixin.qq.com 操作。从未发布正式版——开发版转发出去的卡片仅项目成员/体验成员能打开（「别人打不开转发」属平台权限设计，非 bug，加体验成员或提审发布解决）。2026-09-28 分享手势修复（971d6cc）已推送但未上传开发版，1.2.0 不含。
+- 联调：**DevTools 2.02.2608060（2026-10-12 实测）automator 通道全面失效**——weapp MCP、miniprogram-automator 直连 ws://9420、逻辑层 evaluate（沙箱禁 eval）均超时/被拦，重启无效勿反复试。现行验证：无头逻辑测试（拷 `miniprogram/` 至 /tmp 绕开仓库 ESM 根，stub `wx`/`Page`/`Component` 后 require 真实源码；setData 桩须支持路径语法、createSelectorQuery 链式桩注入矩形）+ `cli auto --project <仓库根> --auto-port 9420` 编译校验兜底（输出 `✔ auto` 即 WXML/JS 编译通过，纯文案/属性改动用它即可）；UI 手感需模拟器/真机人工确认。automator 历史坑（通道恢复时适用）：`switchTab` 抛错统一 `reLaunch`、同页 reLaunch 得旧句柄、evaluate 多行箭头恒返 undefined、wx:if 新按钮需点击-验证-重试；DevTools 重启清模拟器 storage。
+- 发布状态：开发版本 **1.2.0**（2026-09-26 上传，160.6 KB，含食谱云同步）待真机验证；云函数 login/saveProfile/recipeSync 已部署 cloud1-d5gx91rnaaa9f0be4；提审/上线需到 mp.weixin.qq.com 操作。从未发布正式版——开发版转发出去的卡片仅项目成员/体验成员能打开（「别人打不开转发」属平台权限设计，非 bug，加体验成员或提审发布解决）。2026-09-28 分享手势修复（971d6cc）、2026-10-12 备菜弹窗排序/跨区拖动/文案与指引微调（4644b6b、2fe2a51 及后续）均已推送 origin/Mini-V1 但**未上传开发版，1.2.0 均不含**，需要真机验证时 `cli upload` 重新上传。
 
 ## 技术栈和命令
 
